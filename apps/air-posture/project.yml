@@ -1,0 +1,28 @@
+name: AirPosture
+options:
+  bundleIdPrefix: es.luischav
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: 7V3HZUL435
+    SWIFT_VERSION: "5.10"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  AirPosture:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: Air Posture
+        UILaunchScreen: {}
+        NSMotionUsageDescription: Air Posture reads your AirPods head motion to spot when your head drops forward.
+        UIBackgroundModes: [audio]
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: es.luischav.airposture
+        GENERATE_INFOPLIST_FILE: NO
