@@ -20,3 +20,17 @@ open AirPosture.xcodeproj   # pick your iPhone, Run
 ```
 
 Spike test: Start, sit tall, Calibrate, lock the phone for 10 minutes while slouching now and then, then reopen. "Samples in background" and "Longest gap in background" answer whether tracking survives in the background; Export log gives the CSV.
+
+## TestFlight
+
+Signing uses the App Store Connect API key in `~/.appstoreconnect` (M1 and Max); no Xcode login needed.
+
+```bash
+cd apps/air-posture && xcodegen generate
+K=~/.appstoreconnect/private_keys/AuthKey_AZ756K8XB6.p8; ISS="$(cat ~/.appstoreconnect/issuer_id)"
+AUTH=(-allowProvisioningUpdates -authenticationKeyPath $K -authenticationKeyID AZ756K8XB6 -authenticationKeyIssuerID "$ISS")
+xcodebuild archive -project AirPosture.xcodeproj -scheme AirPosture -destination 'generic/platform=iOS' -archivePath /tmp/AirPosture.xcarchive "${AUTH[@]}"
+xcodebuild -exportArchive -archivePath /tmp/AirPosture.xcarchive -exportOptionsPlist tools/ExportOptions.plist -exportPath /tmp/AirPosture-export "${AUTH[@]}"
+```
+
+Bump `CURRENT_PROJECT_VERSION` in `project.yml` before each upload. `tools/asc.py` is a tiny App Store Connect API client using the same key. The key's role cannot register bundle IDs (403), so the first upload needs the App ID and the App Store Connect app record created in a browser signed in to the account.
