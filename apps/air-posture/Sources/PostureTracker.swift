@@ -43,8 +43,16 @@ final class PostureTracker: NSObject, ObservableObject {
         available = manager.isDeviceMotionAvailable
     }
 
+    /// Upright while the head has not dropped past the threshold (or no baseline yet).
+    var isUpright: Bool { drop <= thresholdDegrees }
+
+    /// Simulator screenshots: `-demo` feeds a slow synthetic slouch so the UI has live data.
+    static let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
+    private var demoTimer: Timer?
+
     func start() {
         guard !running else { return }
+        if Self.isDemo { startDemo(); return }
         openLog()
         do { try feedback.start() } catch { lastError = "Audio: \(error.localizedDescription)" }
         manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
@@ -56,7 +64,28 @@ final class PostureTracker: NSObject, ObservableObject {
         running = true
     }
 
+    private func startDemo() {
+        available = true
+        connected = true
+        running = true
+        baselinePitch = 0
+        let dropArg = ProcessInfo.processInfo.arguments.firstIndex(of: "-demoDrop")
+            .flatMap { i in Double(ProcessInfo.processInfo.arguments[i + 1]) }
+        let t0 = Date()
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let t = Date().timeIntervalSince(t0)
+                self.pitch = -(dropArg ?? (9 + 9 * sin(t / 4)))
+                self.sampleCount += 1
+                self.secondsStill = t
+            }
+        }
+    }
+
     func stop() {
+        demoTimer?.invalidate()
+        demoTimer = nil
         manager.stopDeviceMotionUpdates()
         feedback.stop()
         try? logHandle?.close()
