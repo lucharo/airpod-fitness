@@ -1,4 +1,5 @@
 import CoreMotion
+import UIKit
 import Foundation
 
 /// Reads AirPods head motion, compares pitch with a calibrated baseline,
@@ -13,6 +14,9 @@ final class PostureTracker: NSObject, ObservableObject {
     @Published var roll = 0.0
     @Published var yaw = 0.0
     @Published var baselinePitch: Double?
+    /// 0...1 while a 2-second recalibration is collecting samples; nil otherwise.
+    @Published var calibrationProgress: Double?
+    @Published var calibratedAt: Date?
     @Published var thresholdDegrees = 12.0
     @Published var sampleCount = 0
     @Published var longestBackgroundGap = 0.0          // seconds
@@ -96,6 +100,7 @@ final class PostureTracker: NSObject, ObservableObject {
                 } else {
                     self.pitch = -(dropArg ?? (9 + 9 * sin(t / 4)))
                 }
+                self.updateCalibration()
                 self.sampleCount += 1
                 self.secondsStill = t
             }
@@ -112,7 +117,36 @@ final class PostureTracker: NSObject, ObservableObject {
         running = false
     }
 
-    func calibrate() { baselinePitch = pitch }
+    func calibrate() { baselinePitch = pitch; calibratedAt = Date() }
+
+    /// Recalibrate from the average pitch over 2 s of holding still, with a haptic when done.
+    func startCalibration() {
+        guard running else { return }
+        calibrationSum = 0
+        calibrationCount = 0
+        calibrationStart = Date()
+        calibrationProgress = 0
+    }
+
+    private var calibrationSum = 0.0, calibrationCount = 0.0
+    private var calibrationStart = Date()
+    private let calibrationHaptic = UINotificationFeedbackGenerator()
+
+    private func updateCalibration() {
+        guard calibrationProgress != nil else { return }
+        calibrationSum += pitch
+        calibrationCount += 1
+        let progress = Date().timeIntervalSince(calibrationStart) / 2
+        if progress >= 1 {
+            baselinePitch = calibrationSum / max(calibrationCount, 1)
+            calibratedAt = Date()
+            calibrationProgress = nil
+            calibrationHaptic.notificationOccurred(.success)
+            feedback.chime()
+        } else {
+            calibrationProgress = progress
+        }
+    }
 
     /// Soft two-note chime through the AirPods.
     func chime() { feedback.chime() }
@@ -131,6 +165,7 @@ final class PostureTracker: NSObject, ObservableObject {
         if !isForeground { backgroundSamples += 1 }
 
         pitch = motion.attitude.pitch * 180 / .pi
+        updateCalibration()
         roll = motion.attitude.roll * 180 / .pi
         yaw = motion.attitude.yaw * 180 / .pi
         sampleCount += 1

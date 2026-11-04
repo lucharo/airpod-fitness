@@ -11,6 +11,9 @@ struct HomeView: View {
             VStack(spacing: 28) {
                 Spacer(minLength: 0)
                 GaugeStatus(tracker: tracker)
+                CalibrateButton(tracker: tracker)
+                    .buttonStyle(.bordered)
+                    .tint(.primary)
                 Spacer(minLength: 0)
                 if !tracker.connected && tracker.running {
                     Label("AirPods not connected", systemImage: "airpods")

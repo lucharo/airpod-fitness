@@ -14,8 +14,7 @@ struct SettingsView: View {
                             value: $tracker.thresholdDegrees, in: 4...40, step: 2)
                     Stepper("Move reminder after \(Int(tracker.stillReminderMinutes)) min still",
                             value: $tracker.stillReminderMinutes, in: 1...90, step: 1)
-                    Button("Recalibrate (sit tall first)") { tracker.calibrate() }
-                        .disabled(!tracker.running)
+                    CalibrateButton(tracker: tracker)
                 } footer: {
                     Text("Smaller angles nudge sooner. Recalibrate when you change chair or screen.")
                 }

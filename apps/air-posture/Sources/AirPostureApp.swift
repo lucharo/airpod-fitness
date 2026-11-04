@@ -11,7 +11,12 @@ struct AirPostureApp: App {
             Group {
                 if onboarded && !ProcessInfo.processInfo.arguments.contains("-onboarding") {
                     HomeView(tracker: tracker)
-                        .onAppear { tracker.start() }
+                        .onAppear {
+                            tracker.start()
+                            if ProcessInfo.processInfo.arguments.contains("-autoCalibrate") {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { tracker.startCalibration() }
+                            }
+                        }
                 } else {
                     OnboardingView(tracker: tracker) { onboarded = true }
                 }
