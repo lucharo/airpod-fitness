@@ -44,8 +44,8 @@ final class PostureTracker: NSObject, ObservableObject {
     }
 
     /// Raw samples for the position recorder; nil when nothing is recording.
-    var onSample: ((CMDeviceMotion) -> Void)?
-    /// Silences the posture tone (the recorder speaks instructions instead).
+    var onSample: ((MotionSample) -> Void)?
+    /// Silences the posture tone while the recorder runs.
     var muteFeedback = false
 
     /// Upright while the head has not dropped past the threshold (or no baseline yet).
@@ -53,6 +53,8 @@ final class PostureTracker: NSObject, ObservableObject {
 
     /// Simulator screenshots: `-demo` feeds a slow synthetic slouch so the UI has live data.
     static let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
+    /// Demo motion that moves and holds, so the guided recorder advances in the simulator.
+    static let isDemoGuide = ProcessInfo.processInfo.arguments.contains("-demoGuide")
     private var demoTimer: Timer?
 
     func start() {
@@ -81,7 +83,19 @@ final class PostureTracker: NSObject, ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 let t = Date().timeIntervalSince(t0)
-                self.pitch = -(dropArg ?? (9 + 9 * sin(t / 4)))
+                if Self.isDemoGuide {
+                    // alternate: 4 s still at centre, 4 s still 30 degrees down, with 1 s moves between
+                    let phase = t.truncatingRemainder(dividingBy: 8)
+                    let k = phase < 3 ? 0 : phase < 4 ? ease01(phase - 3) : phase < 7 ? 1 : 1 - ease01(phase - 7)
+                    let previous = self.pitch
+                    self.pitch = -30 * k
+                    var sample = MotionSample(tSensor: t)
+                    sample.pitch = self.pitch
+                    sample.rotX = (self.pitch - previous) / 0.1 * .pi / 180
+                    self.onSample?(sample)
+                } else {
+                    self.pitch = -(dropArg ?? (9 + 9 * sin(t / 4)))
+                }
                 self.sampleCount += 1
                 self.secondsStill = t
             }
@@ -99,6 +113,9 @@ final class PostureTracker: NSObject, ObservableObject {
     }
 
     func calibrate() { baselinePitch = pitch }
+
+    /// Soft two-note chime through the AirPods.
+    func chime() { feedback.chime() }
 
     func appStateChanged(isForeground: Bool) {
         self.isForeground = isForeground
@@ -120,7 +137,7 @@ final class PostureTracker: NSObject, ObservableObject {
 
         updateStillness(rotation: motion.rotationRate)
         updateFeedback()
-        onSample?(motion)
+        onSample?(MotionSample(motion))
 
         let r = motion.rotationRate
         let rate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
@@ -170,3 +187,5 @@ extension PostureTracker: CMHeadphoneMotionManagerDelegate {
         Task { @MainActor in self.connected = false; self.write("# airpods disconnected\n") }
     }
 }
+
+func ease01(_ x: Double) -> Double { let c = min(max(x, 0), 1); return c * c * (3 - 2 * c) }
