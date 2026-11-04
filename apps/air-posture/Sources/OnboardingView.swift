@@ -83,6 +83,8 @@ struct OnboardingView: View {
             }
             if let w = tracker.calibrationWarning {
                 Label(w, systemImage: "exclamationmark.triangle").font(.footnote)
+                Button("It's right, I use a laptop. Continue") { finish() }
+                    .font(.subheadline)
             }
         }
     }

@@ -41,6 +41,7 @@ final class PositionRecorder: ObservableObject {
     static let assumeMovedAfter = 6.0      // s; last resort when nothing registers (logged as moved_by=timeout)
     static let usualHold = 2.0, positionHold = 3.0, restHold = 1.0
     static let placingStill = 2.0          // s of phone stillness that means "it's in place"
+    static let usualGrace = 3.0            // s after placing before "usual" can be captured (time to look up)
 
     @Published var pocketMode = false
     @Published private(set) var stage: Stage = .intro
@@ -67,6 +68,7 @@ final class PositionRecorder: ObservableObject {
     private var trunkAnchor: CMAcceleration?
     private var movedBy: String?
     private var lastStill = false
+    private var usualMin = 0.0, usualMax = 0.0
     private var stageStartT: TimeInterval?
     private var lastT: TimeInterval?
     private let phoneMotion = CMMotionManager()
@@ -103,6 +105,7 @@ final class PositionRecorder: ObservableObject {
         lastT = nil
         centreSum = (0, 0, 0, 0)
         UIApplication.shared.isIdleTimerDisabled = true
+        UIDevice.current.isProximityMonitoringEnabled = pocketMode
         tracker.muteFeedback = true
         tracker.onSample = { [weak self] s in self?.handle(s) }
         tracker.start()
@@ -115,8 +118,11 @@ final class PositionRecorder: ObservableObject {
         placingTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.stage == .placing else { return }
-                if (self.phoneMoved && self.phoneStill >= Self.placingStill) || Date().timeIntervalSince(started) > 20 {
+                let placed = self.phoneMoved && self.phoneStill >= Self.placingStill && self.phoneInPlace
+                let timedOut = Date().timeIntervalSince(started) > 20
+                if placed || timedOut {
                     self.placingTimer?.invalidate()
+                    self.handle?.write(Data("# placing ended by \(placed ? "detection" : "20 s fallback")\n".utf8))
                     self.say.say("Sit as you usually do and look at your monitor. Hold still.")
                     self.enter(.usual)
                 }
@@ -139,7 +145,7 @@ final class PositionRecorder: ObservableObject {
     private func enter(_ s: Stage) {
         stage = s
         fill = 0
-        movedBy = nil
+        if s != .rest { movedBy = nil }
         stageStartT = nil
         anchor = current
         trunkAnchor = phone?.gravity
@@ -173,7 +179,12 @@ final class PositionRecorder: ObservableObject {
 
         switch stage {
         case .usual:
-            if still {
+            guard elapsed > Self.usualGrace else { break }
+            if centreSum.n == 0 { usualMin = s.pitch; usualMax = s.pitch }
+            let lo = min(usualMin, s.pitch), hi = max(usualMax, s.pitch)
+            if still && s.rotationRate < 0.1 && hi - lo < 3 {
+                usualMin = lo
+                usualMax = hi
                 centreSum = (centreSum.pitch + s.pitch, centreSum.yaw + s.yaw, centreSum.roll + s.roll, centreSum.n + 1)
                 fill += dt / Self.usualHold
             } else {
@@ -220,6 +231,7 @@ final class PositionRecorder: ObservableObject {
         placingTimer?.invalidate()
         phoneMotion.stopDeviceMotionUpdates()
         UIApplication.shared.isIdleTimerDisabled = false
+        UIDevice.current.isProximityMonitoringEnabled = false
         try? handle?.close()
         handle = nil
         let wasRunning = stage != .intro
@@ -284,6 +296,12 @@ final class PositionRecorder: ObservableObject {
                 self.phoneStill = (rot < 0.15 && acc < 0.03) ? self.phoneStill + 0.02 : 0
             }
         }
+    }
+
+    /// Desk: lying flat. Pocket: roughly upright. A phone held in the hand at reading angle is neither.
+    private var phoneInPlace: Bool {
+        guard let g = phone?.gravity else { return true }
+        return pocketMode ? abs(g.y) > 0.6 : abs(g.z) > 0.8
     }
 
     private func angle(_ a: CMAcceleration, _ b: CMAcceleration) -> Double {

@@ -137,6 +137,7 @@ final class PostureTracker: NSObject, ObservableObject {
     static let calibrationGrace = 3.0     // s to put the phone down and look up
     static let calibrationHold = 2.0      // s of stillness that sets the reference
     private var calibrationSum = 0.0, calibrationCount = 0.0, calibrationStill = 0.0
+    private var calibrationMin = 0.0, calibrationMax = 0.0
     private var calibrationStart = Date()
     private var lastCalibrationSample: Date?
     private var lastRotationRate = 0.0
@@ -148,7 +149,13 @@ final class PostureTracker: NSObject, ObservableObject {
         let dt = lastCalibrationSample.map { min(now.timeIntervalSince($0), 0.2) } ?? 0
         lastCalibrationSample = now
         guard now.timeIntervalSince(calibrationStart) > Self.calibrationGrace else { return }
-        if lastRotationRate < 0.25 {
+        // still = slow rotation AND the head stays within a 3° pitch band, so a slow lift
+        // from the phone to the monitor can't be averaged in
+        if calibrationCount == 0 { calibrationMin = pitch; calibrationMax = pitch }
+        let lo = min(calibrationMin, pitch), hi = max(calibrationMax, pitch)
+        if lastRotationRate < 0.1 && hi - lo < 3 {
+            calibrationMin = lo
+            calibrationMax = hi
             calibrationSum += pitch
             calibrationCount += 1
             calibrationStill += dt
