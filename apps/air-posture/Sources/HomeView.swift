@@ -1,26 +1,15 @@
 import SwiftUI
 
-/// Main screen: one status, one button, settings behind a gear.
-/// Three layouts (A gauge, B big word, C plumb line) are switchable in Settings → Prototype.
+/// Main screen: a gauge, one status, one button, settings behind a gear.
 struct HomeView: View {
     @ObservedObject var tracker: PostureTracker
-    @AppStorage("homeVariant") private var variant = Self.launchVariant
     @State private var showSettings = false
-
-    static var launchVariant: String {
-        let args = ProcessInfo.processInfo.arguments
-        return args.firstIndex(of: "-variant").map { args[$0 + 1] } ?? "A"
-    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 28) {
                 Spacer(minLength: 0)
-                switch variant {
-                case "B": BigWordStatus(tracker: tracker)
-                case "C": PlumbStatus(tracker: tracker)
-                default: GaugeStatus(tracker: tracker)
-                }
+                GaugeStatus(tracker: tracker)
                 Spacer(minLength: 0)
                 if !tracker.connected && tracker.running {
                     Label("AirPods not connected", systemImage: "airpods")
@@ -45,7 +34,7 @@ struct HomeView: View {
                     .accessibilityLabel("Settings")
             }
             .sheet(isPresented: $showSettings) {
-                SettingsView(tracker: tracker, variant: $variant)
+                SettingsView(tracker: tracker)
             }
         }
     }
@@ -65,7 +54,7 @@ struct StatusLine: View {
     }
 }
 
-// MARK: A — gauge
+// MARK: Gauge
 
 struct GaugeStatus: View {
     @ObservedObject var tracker: PostureTracker
@@ -116,66 +105,5 @@ struct Tick: Shape {
         p.move(to: CGPoint(x: c.x + (radius - 22) * cos(a), y: c.y + (radius - 22) * sin(a)))
         p.addLine(to: CGPoint(x: c.x + (radius + 22) * cos(a), y: c.y + (radius + 22) * sin(a)))
         return p
-    }
-}
-
-// MARK: B — big word
-
-struct BigWordStatus: View {
-    @ObservedObject var tracker: PostureTracker
-    var body: some View {
-        let drop = max(tracker.drop, 0)
-        VStack(alignment: .leading, spacing: 16) {
-            StatusLine(tracker: tracker)
-                .font(.system(size: 44, weight: .bold))
-                .labelStyle(.titleOnly)
-            Text(tracker.isUpright
-                 ? "Head \(Int(drop.rounded()))° from your upright position."
-                 : "Head \(Int(drop.rounded()))° forward. Lift your chin and sit back.")
-                .font(.title3).foregroundStyle(.secondary)
-            GeometryReader { g in
-                let w = g.size.width
-                let frac = min(drop / 30, 1)
-                let t = min(tracker.thresholdDegrees / 30, 1)
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.secondary.opacity(0.2))
-                    Capsule().fill(tracker.isUpright ? Color.primary : Color.orange).frame(width: max(12, w * frac))
-                    Rectangle().fill(Color.primary).frame(width: 3, height: 30).offset(x: w * t - 1.5)
-                }
-            }
-            .frame(height: 14)
-            HStack {
-                Text("0°"); Spacer(); Text("nudge \(Int(tracker.thresholdDegrees))°"); Spacer(); Text("30°")
-            }
-            .font(.caption).foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 28)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// MARK: C — plumb line
-
-struct PlumbStatus: View {
-    @ObservedObject var tracker: PostureTracker
-    var body: some View {
-        let drop = min(max(tracker.drop, 0), 40)
-        VStack(spacing: 18) {
-            ZStack(alignment: .top) {
-                Path { p in p.move(to: CGPoint(x: 120, y: 0)); p.addLine(to: CGPoint(x: 120, y: 260)) }
-                    .stroke(Color.secondary.opacity(0.5), style: .init(lineWidth: 2, dash: [6, 6]))
-                VStack(spacing: 0) {
-                    Rectangle().fill(Color.primary).frame(width: 2, height: 190)
-                    Capsule().fill(Color.primary).frame(width: 34, height: 58)
-                        .overlay(Circle().fill(Color(uiColor: .systemBackground)).frame(width: 10).offset(y: -12))
-                }
-                .rotationEffect(.degrees(drop), anchor: .top)
-                .animation(.easeOut(duration: 0.3), value: drop)
-            }
-            .frame(width: 240, height: 260)
-            StatusLine(tracker: tracker).font(.title2.weight(.semibold))
-            Text("\(Int(drop.rounded()))° off the line · nudge at \(Int(tracker.thresholdDegrees))°")
-                .font(.footnote).foregroundStyle(.secondary).monospacedDigit()
-        }
     }
 }

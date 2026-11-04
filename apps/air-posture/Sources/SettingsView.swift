@@ -3,7 +3,6 @@ import SwiftUI
 /// Everything adjustable plus the raw numbers, kept off the main screen.
 struct SettingsView: View {
     @ObservedObject var tracker: PostureTracker
-    @Binding var variant: String
     @Environment(\.dismiss) private var dismiss
     @AppStorage("onboarded") private var onboarded = true
 
@@ -38,19 +37,6 @@ struct SettingsView: View {
                     row("Samples in background", "\(tracker.backgroundSamples)")
                     row("Longest gap in background", String(format: "%.1f s", tracker.longestBackgroundGap))
                     ShareLink("Export log", item: tracker.logURL)
-                }
-
-                Section {
-                    Picker("Main screen layout", selection: $variant) {
-                        Text("A gauge").tag("A")
-                        Text("B words").tag("B")
-                        Text("C plumb").tag("C")
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("Prototype")
-                } footer: {
-                    Text("Try each layout and tell me which letter reads best.")
                 }
 
                 Section {
