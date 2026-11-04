@@ -27,14 +27,21 @@ def angle_between(a: np.ndarray, b: np.ndarray) -> float:
 
 def summarise(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for (pos, rep), g in df[df.position != "baseline"].groupby(["position", "rep"], sort=False):
-        upright, hold, into = g[g.phase == "upright"], g[g.phase == "hold"], g[g.phase == "into"]
-        if upright.empty:  # first rep of the first position uses the opening baseline
-            upright = df[df.position == "baseline"].head(200)
+    # build 4 and earlier: reference phase "upright", opening "baseline"; build 8+: "rest" and position "usual"
+    reference_phases = {"upright", "rest"}
+    opening = {"baseline", "usual"}
+    for (pos, rep), g in df[~df.position.isin(opening | {"setup", "end"})].groupby(["position", "rep"], sort=False):
+        upright, hold, into = g[g.phase.isin(reference_phases)], g[g.phase == "hold"], g[g.phase == "into"]
+        if upright.empty:  # first rep of the first position uses the opening reference
+            upright = df[df.position.isin(opening)].tail(200)
         if hold.empty:
             continue
-        # skip the first second of each hold so the transition does not leak in
-        hold = hold[hold.t_wall >= hold.t_wall.min() + 1]
+        if "still" in hold:  # build 8+: keep only the still samples of a hold
+            hold = hold[hold.still == 1]
+        else:  # skip the first second of each hold so the transition does not leak in
+            hold = hold[hold.t_wall >= hold.t_wall.min() + 1]
+        if hold.empty:
+            continue
         grav_u = upright[["grav_x", "grav_y", "grav_z"]].mean().to_numpy()
         grav_h = hold[["grav_x", "grav_y", "grav_z"]].mean().to_numpy()
         acc = np.sqrt(into.acc_x**2 + into.acc_y**2 + into.acc_z**2) if not into.empty else pd.Series([np.nan])
@@ -53,6 +60,7 @@ def summarise(df: pd.DataFrame) -> pd.DataFrame:
             "into_peak_acc_g": acc.max(),
             "trunk_angle": trunk,
             "n_hold": len(hold),
+            "moved_by": g.moved_by.dropna().iloc[0] if "moved_by" in g and g.moved_by.notna().any() else "",
         })
     return pd.DataFrame(rows)
 

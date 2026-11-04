@@ -1,35 +1,39 @@
 import SwiftUI
 
-/// Recalibrate with visible feedback: "Hold still" with progress, then "Upright set at X°".
+/// Starts hands-free calibration: put the phone down, look at the monitor, sit tall, wait for the chime.
 struct CalibrateButton: View {
     @ObservedObject var tracker: PostureTracker
+    var title = "Recalibrate"
     @State private var justSet = false
 
     var body: some View {
-        Button {
-            guard tracker.calibrationProgress == nil else { return }
-            justSet = false
-            tracker.startCalibration()
-        } label: {
-            HStack(spacing: 10) {
-                if let p = tracker.calibrationProgress {
-                    ProgressView(value: p).frame(width: 60)
-                    Text("Hold still, sitting tall…")
-                } else if justSet, let b = tracker.baselinePitch {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Upright set at \(Int(b.rounded()))°").monospacedDigit()
-                } else {
-                    Image(systemName: "scope")
-                    Text("Recalibrate (sit tall first)")
+        VStack(spacing: 8) {
+            Button {
+                guard tracker.calibrationProgress == nil else { return }
+                justSet = false
+                tracker.startCalibration()
+            } label: {
+                HStack(spacing: 10) {
+                    if let p = tracker.calibrationProgress {
+                        ProgressView(value: p).frame(width: 60)
+                        Text(p > 0 ? "Hold still…" : "Phone down, eyes on your monitor")
+                    } else if justSet {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Set: eyes on monitor, sitting tall")
+                    } else {
+                        Image(systemName: "scope")
+                        Text(title)
+                    }
                 }
             }
+            if let w = tracker.calibrationWarning, tracker.calibrationProgress == nil {
+                Label(w, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.secondary)
+            }
         }
-        .disabled(!tracker.running)
         .onChange(of: tracker.calibratedAt) { _, _ in
-            guard tracker.calibrationProgress == nil else { return }
             justSet = true
             Task {
-                try? await Task.sleep(for: .seconds(3))
+                try? await Task.sleep(for: .seconds(4))
                 justSet = false
             }
         }

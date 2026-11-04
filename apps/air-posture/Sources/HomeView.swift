@@ -60,7 +60,7 @@ struct StatusLine: View {
         if !tracker.running {
             Label("Paused", systemImage: "pause.circle")
         } else if tracker.isUpright {
-            Label("Upright", systemImage: "checkmark.circle.fill")
+            Label("Head level", systemImage: "checkmark.circle.fill")
         } else {
             Label("Head dropping", systemImage: "arrow.down.circle.fill")
         }

@@ -117,34 +117,60 @@ final class PostureTracker: NSObject, ObservableObject {
         running = false
     }
 
-    func calibrate() { baselinePitch = pitch; calibratedAt = Date() }
-
-    /// Recalibrate from the average pitch over 2 s of holding still, with a haptic when done.
+    /// Hands-free calibration. The person taps, puts the phone down and looks at their monitor;
+    /// after a grace period for that, 2 s of holding still sets the reference, confirmed by a chime and voice.
+    /// The reference is "eyes on the monitor, sitting tall", never a moment of looking at the phone.
     func startCalibration() {
-        guard running else { return }
+        if !running { start() }
         calibrationSum = 0
         calibrationCount = 0
+        calibrationStill = 0
         calibrationStart = Date()
         calibrationProgress = 0
+        calibrationWarning = nil
+        Speaker.shared.say("Put the phone down. Look at your monitor and sit tall.")
     }
 
-    private var calibrationSum = 0.0, calibrationCount = 0.0
+    /// Set when the captured reference looks like looking down rather than at a monitor.
+    @Published var calibrationWarning: String?
+
+    static let calibrationGrace = 3.0     // s to put the phone down and look up
+    static let calibrationHold = 2.0      // s of stillness that sets the reference
+    private var calibrationSum = 0.0, calibrationCount = 0.0, calibrationStill = 0.0
     private var calibrationStart = Date()
+    private var lastCalibrationSample: Date?
+    private var lastRotationRate = 0.0
     private let calibrationHaptic = UINotificationFeedbackGenerator()
 
     private func updateCalibration() {
         guard calibrationProgress != nil else { return }
-        calibrationSum += pitch
-        calibrationCount += 1
-        let progress = Date().timeIntervalSince(calibrationStart) / 2
-        if progress >= 1 {
-            baselinePitch = calibrationSum / max(calibrationCount, 1)
-            calibratedAt = Date()
+        let now = Date()
+        let dt = lastCalibrationSample.map { min(now.timeIntervalSince($0), 0.2) } ?? 0
+        lastCalibrationSample = now
+        guard now.timeIntervalSince(calibrationStart) > Self.calibrationGrace else { return }
+        if lastRotationRate < 0.25 {
+            calibrationSum += pitch
+            calibrationCount += 1
+            calibrationStill += dt
+        } else {
+            calibrationSum = 0
+            calibrationCount = 0
+            calibrationStill = 0
+        }
+        calibrationProgress = min(calibrationStill / Self.calibrationHold, 0.999)
+        if calibrationStill >= Self.calibrationHold {
+            let value = calibrationSum / max(calibrationCount, 1)
+            baselinePitch = value
+            calibratedAt = now
             calibrationProgress = nil
             calibrationHaptic.notificationOccurred(.success)
             feedback.chime()
-        } else {
-            calibrationProgress = progress
+            if value < -15 {
+                calibrationWarning = "That looked like your head was tilted down. If you were looking at the phone, recalibrate while looking at your monitor."
+                Speaker.shared.say("Set, but your head looked tilted down. Check the phone.")
+            } else {
+                Speaker.shared.say("Set.")
+            }
         }
     }
 
@@ -165,6 +191,8 @@ final class PostureTracker: NSObject, ObservableObject {
         if !isForeground { backgroundSamples += 1 }
 
         pitch = motion.attitude.pitch * 180 / .pi
+        let r = motion.rotationRate
+        lastRotationRate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
         updateCalibration()
         roll = motion.attitude.roll * 180 / .pi
         yaw = motion.attitude.yaw * 180 / .pi
@@ -174,11 +202,9 @@ final class PostureTracker: NSObject, ObservableObject {
         updateFeedback()
         onSample?(MotionSample(motion))
 
-        let r = motion.rotationRate
-        let rate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
         write(String(format: "%.3f,%@,%.2f,%.2f,%.2f,%.3f,%.2f\n",
                      Date().timeIntervalSince1970, isForeground ? "fg" : "bg",
-                     pitch, roll, yaw, rate, drop))
+                     pitch, roll, yaw, lastRotationRate, drop))
     }
 
     /// Graded feedback: silent below the threshold, louder and higher the further past it.

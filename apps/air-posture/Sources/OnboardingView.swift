@@ -23,6 +23,9 @@ struct OnboardingView: View {
             .padding(.top, 12)
 
             Spacer()
+                .onChange(of: tracker.calibratedAt) { _, _ in
+                    if step == 2 && tracker.calibrationWarning == nil { finish() }
+                }
             Group {
                 switch step {
                 case 0: intro
@@ -39,7 +42,7 @@ struct OnboardingView: View {
             .buttonStyle(.borderedProminent)
             .tint(.primary)
             .foregroundStyle(Color(uiColor: .systemBackground))
-            .disabled(step == 1 && !tracker.connected && !PostureTracker.isDemo)
+            .disabled((step == 1 && !tracker.connected && !PostureTracker.isDemo) || (step == 2 && tracker.calibrationProgress != nil))
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
@@ -50,7 +53,7 @@ struct OnboardingView: View {
             Image("AppIconImage").resizable().frame(width: 88, height: 88)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             Text("Keep your head up while you sit.").font(.largeTitle.bold())
-            Text("Air Posture reads the motion sensors in your AirPods. When your head drops forward past your upright position, you hear a soft tone that gets stronger the further you go. Sit back up and it stops.")
+            Text("Air Posture reads the motion sensors in your AirPods. When your head drops forward from where it is when you look at your monitor, you hear a soft tone that gets stronger the further you go. Lift your head and it stops.")
                 .font(.body).foregroundStyle(.secondary)
         }
     }
@@ -71,9 +74,16 @@ struct OnboardingView: View {
             Image(systemName: "level")
                 .font(.system(size: 56))
                 .accessibilityHidden(true)
-            Text("Sit tall, look at your screen").font(.largeTitle.bold())
-            Text("Shoulders back, eyes level with the screen. Tap the button while holding that position; it becomes your upright reference. You can recalibrate any time.")
+            Text("Show it your good position").font(.largeTitle.bold())
+            Text("Tap Calibrate, put the phone down on the desk, then sit tall and look at your computer monitor. Hold still until you hear the chime; you don't need to look at the phone.")
                 .foregroundStyle(.secondary)
+            if let p = tracker.calibrationProgress {
+                ProgressView(value: p)
+                Text(p > 0 ? "Hold still…" : "Phone down, eyes on your monitor").font(.headline)
+            }
+            if let w = tracker.calibrationWarning {
+                Label(w, systemImage: "exclamationmark.triangle").font(.footnote)
+            }
         }
     }
 
@@ -81,13 +91,12 @@ struct OnboardingView: View {
         switch step {
         case 0: "Get started"
         case 1: tracker.connected || PostureTracker.isDemo ? "Continue" : "Waiting for AirPods…"
-        default: "This is my upright position"
+        default: tracker.calibrationProgress != nil ? "Listening…" : tracker.calibrationWarning != nil ? "Calibrate again" : "Calibrate"
         }
     }
 
     private func next() {
         if step < 2 { withAnimation { step += 1 }; return }
-        tracker.calibrate()
-        finish()
+        tracker.startCalibration()
     }
 }
