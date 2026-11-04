@@ -43,6 +43,11 @@ final class PostureTracker: NSObject, ObservableObject {
         available = manager.isDeviceMotionAvailable
     }
 
+    /// Raw samples for the position recorder; nil when nothing is recording.
+    var onSample: ((CMDeviceMotion) -> Void)?
+    /// Silences the posture tone (the recorder speaks instructions instead).
+    var muteFeedback = false
+
     /// Upright while the head has not dropped past the threshold (or no baseline yet).
     var isUpright: Bool { drop <= thresholdDegrees }
 
@@ -115,6 +120,7 @@ final class PostureTracker: NSObject, ObservableObject {
 
         updateStillness(rotation: motion.rotationRate)
         updateFeedback()
+        onSample?(motion)
 
         let r = motion.rotationRate
         let rate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
@@ -125,7 +131,7 @@ final class PostureTracker: NSObject, ObservableObject {
 
     /// Graded feedback: silent below the threshold, louder and higher the further past it.
     private func updateFeedback() {
-        guard baselinePitch != nil else { feedback.level = 0; return }
+        guard baselinePitch != nil, !muteFeedback else { feedback.level = 0; return }
         let excess = drop - thresholdDegrees
         feedback.level = excess > 0 ? min(1, excess / 20) : 0
     }

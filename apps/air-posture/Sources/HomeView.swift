@@ -4,6 +4,7 @@ import SwiftUI
 struct HomeView: View {
     @ObservedObject var tracker: PostureTracker
     @State private var showSettings = false
+    @State private var showRecorder = ProcessInfo.processInfo.arguments.contains("-recorder")
 
     var body: some View {
         NavigationStack {
@@ -30,11 +31,20 @@ struct HomeView: View {
             .navigationTitle("Air Posture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    .accessibilityLabel("Settings")
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showRecorder = true } label: { Label("Record", systemImage: "record.circle") }
+                        .labelStyle(.titleAndIcon)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings")
+                }
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView(tracker: tracker)
+            }
+            .fullScreenCover(isPresented: $showRecorder) {
+                RecordView(tracker: tracker)
             }
         }
     }
