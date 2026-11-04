@@ -23,14 +23,19 @@ Spike test: Start, sit tall, Calibrate, lock the phone for 10 minutes while slou
 
 ## TestFlight
 
-Signing uses the App Store Connect API key in `~/.appstoreconnect` (M1 and Max); no Xcode login needed.
+App 6830647347 in App Store Connect, bundle `lucharo.airposture`, internal group "Luis". Build 1 uploaded 2026-11-04.
+
+The App Store Connect API key in `~/.appstoreconnect` (M1 and Max) archives and reads App Store Connect, but its role cannot cloud-sign, register bundle IDs or create profiles (403). Distribution therefore signs manually with the "Apple Distribution" certificate in the M1's login keychain and the "Air Posture App Store" profile, and the export must run in the M1's GUI session because SSH cannot unlock the keychain:
 
 ```bash
+# Max: archive (bump CURRENT_PROJECT_VERSION in project.yml first)
 cd apps/air-posture && xcodegen generate
 K=~/.appstoreconnect/private_keys/AuthKey_AZ756K8XB6.p8; ISS="$(cat ~/.appstoreconnect/issuer_id)"
-AUTH=(-allowProvisioningUpdates -authenticationKeyPath $K -authenticationKeyID AZ756K8XB6 -authenticationKeyIssuerID "$ISS")
-xcodebuild archive -project AirPosture.xcodeproj -scheme AirPosture -destination 'generic/platform=iOS' -archivePath /tmp/AirPosture.xcarchive "${AUTH[@]}"
-xcodebuild -exportArchive -archivePath /tmp/AirPosture.xcarchive -exportOptionsPlist tools/ExportOptions.plist -exportPath /tmp/AirPosture-export "${AUTH[@]}"
+xcodebuild archive -project AirPosture.xcodeproj -scheme AirPosture -destination 'generic/platform=iOS' \
+  -archivePath /tmp/AirPosture.xcarchive -allowProvisioningUpdates -authenticationKeyPath $K -authenticationKeyID AZ756K8XB6 -authenticationKeyIssuerID "$ISS"
+# Copy AirPosture.xcarchive, tools/ExportOptions-manual.plist (as ExportOptions.plist) and
+# ../../tools/export-in-gui-session.sh to a dir on the M1, then on the M1:
+launchctl submit -l com.user.airposture-export -- <dir>/export-in-gui-session.sh <dir>   # writes <dir>/done and export.log
 ```
 
-Bump `CURRENT_PROJECT_VERSION` in `project.yml` before each upload. `tools/asc.py` is a tiny App Store Connect API client using the same key. The key's role cannot register bundle IDs (403), so the first upload needs the App ID and the App Store Connect app record created in a browser signed in to the account.
+`tools/asc.py` is a small App Store Connect API client on the same key (builds, beta groups, testers, profile download). `tools/brave-js.sh` and `tools/brave-page-js.sh` drive a signed-in Brave over Apple Events for the web-only steps (Brave: View > Developer > Allow JavaScript from Apple Events).
