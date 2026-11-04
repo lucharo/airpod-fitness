@@ -1,3 +1,5 @@
+import AVFoundation
+import CoreMotion
 import Foundation
 import UIKit
 
@@ -13,7 +15,7 @@ final class PositionRecorder: ObservableObject {
     }
 
     enum Stage: Equatable {
-        case intro, centre, into, hold, back, settle, done
+        case intro, pocket, centre, into, hold, back, settle, done
     }
 
     static let positions: [Position] = [
@@ -48,8 +50,12 @@ final class PositionRecorder: ObservableObject {
     @Published private(set) var sampleCount = 0
     @Published private(set) var fileURL: URL?
 
-    var position: Position? { Self.positions.indices.contains(index) ? Self.positions[index] : nil }
-    var total: Int { Self.positions.count * Self.reps }
+    /// iPhone in a chest pocket: also records the phone's own motion as a trunk sensor,
+    /// skips "look at your phone", and says each position name aloud (the screen is out of sight).
+    @Published var pocketMode = false
+    var active: [Position] { pocketMode ? Self.positions.filter { $0.id != "phone_down" } : Self.positions }
+    var position: Position? { active.indices.contains(index) ? active[index] : nil }
+    var total: Int { active.count * Self.reps }
     var isRecording: Bool { ![.intro, .done].contains(stage) }
 
     private weak var tracker: PostureTracker?
@@ -63,6 +69,11 @@ final class PositionRecorder: ObservableObject {
     private var lastT: TimeInterval?
     private let haptic = UINotificationFeedbackGenerator()
     private let tap = UIImpactFeedbackGenerator(style: .light)
+    private let phoneMotion = CMMotionManager()
+    private var phone: CMDeviceMotion?
+    private let speech = AVSpeechSynthesizer()
+    private var pocketTimer: Timer?
+    @Published private(set) var pocketCountdown = 0
 
     func start(tracker: PostureTracker) {
         self.tracker = tracker
@@ -73,9 +84,10 @@ final class PositionRecorder: ObservableObject {
         let header = """
         # Air Posture position recording, build \(build), \(Date())
         # guided by motion: reps=\(Self.reps) centreHold=\(Self.centreHold)s positionHold=\(Self.positionHold)s settleHold=\(Self.settleHold)s stillRotation=\(Self.stillRotation)rad/s movedDegrees=\(Self.movedDegrees)
+        # pocket mode: \(pocketMode) (ph_* columns are the iPhone, in a chest pocket, as a trunk sensor)
         # phases: upright (settled before a position), into (moving in), hold (still in position), back (returning)
         # angles in degrees, acceleration in g, rotation in rad/s; quaternion and gravity in the headphone reference frame
-        t_wall,t_sensor,position,phase,rep,qx,qy,qz,qw,pitch,roll,yaw,grav_x,grav_y,grav_z,acc_x,acc_y,acc_z,rot_x,rot_y,rot_z,sensor
+        t_wall,t_sensor,position,phase,rep,qx,qy,qz,qw,pitch,roll,yaw,grav_x,grav_y,grav_z,acc_x,acc_y,acc_z,rot_x,rot_y,rot_z,sensor,ph_pitch,ph_roll,ph_yaw,ph_grav_x,ph_grav_y,ph_grav_z,ph_acc_x,ph_acc_y,ph_acc_z
 
         """
         FileManager.default.createFile(atPath: url.path, contents: Data(header.utf8))
@@ -88,7 +100,25 @@ final class PositionRecorder: ObservableObject {
         rep = 1
         lastT = nil
         centreSum = (0, 0, 0, 0)
-        enter(.centre)
+        if pocketMode {
+            startPhoneMotion()
+            enter(.pocket)
+            pocketCountdown = 8
+            say("Put your phone in your chest pocket.")
+            pocketTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.pocketCountdown -= 1
+                    if self.pocketCountdown <= 0 {
+                        self.pocketTimer?.invalidate()
+                        self.say("Sit as you normally do and keep still.")
+                        self.enter(.centre)
+                    }
+                }
+            }
+        } else {
+            enter(.centre)
+        }
         tracker.muteFeedback = true
         tracker.onSample = { [weak self] s in self?.handle(s) }
         tracker.start()
@@ -99,7 +129,7 @@ final class PositionRecorder: ObservableObject {
         completed += Self.reps - rep + 1
         rep = 1
         index += 1
-        if index >= Self.positions.count { finish() } else { enter(.into) }
+        if index >= active.count { finish() } else { announce(); enter(.into) }
     }
 
     func stop() { finish() }
@@ -145,6 +175,7 @@ final class PositionRecorder: ObservableObject {
                 let n = max(centreSum.n, 1)
                 centre = (centreSum.pitch / n, centreSum.yaw / n, centreSum.roll / n)
                 tap.impactOccurred()
+                announce()
                 enter(.into)
             }
         case .into:
@@ -161,7 +192,7 @@ final class PositionRecorder: ObservableObject {
         case .settle:
             fill = still ? fill + dt / Self.settleHold : 0
             if fill >= 1 { next() }
-        case .intro, .done:
+        case .intro, .pocket, .done:
             break
         }
     }
@@ -169,13 +200,16 @@ final class PositionRecorder: ObservableObject {
     private func next() {
         completed += 1
         if rep < Self.reps { rep += 1 } else { rep = 1; index += 1 }
-        if index >= Self.positions.count { finish() } else { tap.impactOccurred(); enter(.into) }
+        if index >= active.count { finish() } else { tap.impactOccurred(); announce(); enter(.into) }
     }
 
     private func finish() {
         guard stage != .done else { return }
         tracker?.onSample = nil
         tracker?.muteFeedback = false
+        pocketTimer?.invalidate()
+        phoneMotion.stopDeviceMotionUpdates()
+        if pocketMode { say("Done.") }
         try? handle?.close()
         handle = nil
         stage = .done
@@ -190,10 +224,12 @@ final class PositionRecorder: ObservableObject {
         switch stage {
         case .centre:
             return ("baseline", "upright", 0)
+        case .pocket:
+            return ("baseline", "pocket", 0)
         case .settle:
             var (i, r) = (index, rep + 1)
             if r > Self.reps { r = 1; i += 1 }
-            return (Self.positions.indices.contains(i) ? Self.positions[i].id : "baseline", "upright", r)
+            return (active.indices.contains(i) ? active[i].id : "baseline", "upright", r)
         default:
             return (position?.id ?? "baseline", stage == .hold ? "hold" : stage == .back ? "back" : "into", rep)
         }
@@ -205,8 +241,40 @@ final class PositionRecorder: ObservableObject {
                           Date().timeIntervalSince1970, s.tSensor, l.position, l.phase, l.rep,
                           s.qx, s.qy, s.qz, s.qw, s.pitch, s.roll, s.yaw,
                           s.gravX, s.gravY, s.gravZ, s.accX, s.accY, s.accZ, s.rotX, s.rotY, s.rotZ, s.sensor)
-        handle?.write(Data(line.utf8))
+        var ph = ",,,,,,,,,\n"
+        if let m = phone {
+            let deg = 180 / Double.pi
+            ph = String(format: ",%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
+                        m.attitude.pitch * deg, m.attitude.roll * deg, m.attitude.yaw * deg,
+                        m.gravity.x, m.gravity.y, m.gravity.z,
+                        m.userAcceleration.x, m.userAcceleration.y, m.userAcceleration.z)
+        }
+        handle?.write(Data((String(line.dropLast()) + ph).utf8))
         sampleCount += 1
+    }
+
+    private func startPhoneMotion() {
+        guard phoneMotion.isDeviceMotionAvailable else { return }
+        phoneMotion.deviceMotionUpdateInterval = 1.0 / 50
+        phoneMotion.startDeviceMotionUpdates(to: .main) { [weak self] m, _ in
+            MainActor.assumeIsolated { self?.phone = m }
+        }
+    }
+
+    /// Pocket mode only: the position name, in the best installed voice.
+    private func announce() {
+        guard pocketMode, let p = position else { return }
+        say(rep == 1 ? p.cue + "." : p.title + ", again.")
+    }
+
+    private func say(_ text: String) {
+        let u = AVSpeechUtterance(string: text)
+        let lang = AVSpeechSynthesisVoice.currentLanguageCode()
+        u.voice = AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == lang }
+            .max { $0.quality.rawValue < $1.quality.rawValue } ?? AVSpeechSynthesisVoice(language: lang)
+        speech.stopSpeaking(at: .immediate)
+        speech.speak(u)
     }
 
     private func wrap(_ d: Double) -> Double {

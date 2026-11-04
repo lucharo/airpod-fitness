@@ -38,6 +38,11 @@ def summarise(df: pd.DataFrame) -> pd.DataFrame:
         grav_u = upright[["grav_x", "grav_y", "grav_z"]].mean().to_numpy()
         grav_h = hold[["grav_x", "grav_y", "grav_z"]].mean().to_numpy()
         acc = np.sqrt(into.acc_x**2 + into.acc_y**2 + into.acc_z**2) if not into.empty else pd.Series([np.nan])
+        # iPhone in a chest pocket (pocket mode): trunk angle change between upright and hold
+        trunk = np.nan
+        if "ph_grav_x" in df and hold.ph_grav_x.notna().any() and upright.ph_grav_x.notna().any():
+            trunk = angle_between(upright[["ph_grav_x", "ph_grav_y", "ph_grav_z"]].mean().to_numpy(),
+                                  hold[["ph_grav_x", "ph_grav_y", "ph_grav_z"]].mean().to_numpy())
         rows.append({
             "position": pos, "rep": rep,
             "d_pitch": hold.pitch.mean() - upright.pitch.mean(),
@@ -46,6 +51,7 @@ def summarise(df: pd.DataFrame) -> pd.DataFrame:
             "gravity_angle": angle_between(grav_u, grav_h),
             "hold_pitch_sd": hold.pitch.std(),
             "into_peak_acc_g": acc.max(),
+            "trunk_angle": trunk,
             "n_hold": len(hold),
         })
     return pd.DataFrame(rows)
@@ -57,7 +63,7 @@ def main() -> None:
     df["t"] = df.t_wall - df.t_wall.min()
     s = summarise(df)
     s.round(2).to_csv(path.with_suffix(".summary.csv"), index=False)
-    by_pos = s.groupby("position", sort=False)[["d_pitch", "d_roll", "d_yaw", "gravity_angle", "into_peak_acc_g"]].mean()
+    by_pos = s.groupby("position", sort=False)[["d_pitch", "d_roll", "d_yaw", "gravity_angle", "trunk_angle", "into_peak_acc_g"]].mean()
     rate = len(df) / df.t.max() if df.t.max() > 0 else 0
     print(f"{len(df)} samples over {df.t.max():.0f} s ({rate:.1f} Hz), sensors: {df.sensor.value_counts().to_dict()}")
     print(by_pos.round(1).to_string())

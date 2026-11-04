@@ -1,18 +1,11 @@
 import SwiftUI
 
-/// Guided, motion-driven recording. No voice, no timer: move, hold still while the ring fills,
-/// feel the tick, come back. Two prototype styles: A shows a live head pointer inside the ring
-/// (Face ID enrolment), B a plain ring with a row of progress dots (AirPods hearing test).
+/// Guided, motion-driven recording, in the spirit of Face ID enrolment: a dot follows your head,
+/// the ring fills while you hold still, a tick and chime say come back. No timer.
 struct RecordView: View {
     @ObservedObject var tracker: PostureTracker
     @StateObject private var recorder = PositionRecorder()
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("recordStyle") private var style = Self.launchStyle
-
-    static var launchStyle: String {
-        let args = ProcessInfo.processInfo.arguments
-        return args.firstIndex(of: "-recordStyle").map { args[$0 + 1] } ?? "A"
-    }
 
     var body: some View {
         NavigationStack {
@@ -46,13 +39,15 @@ struct RecordView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Show the app how you sit").font(.largeTitle.bold())
-            Text("You'll move into \(PositionRecorder.positions.count) positions, twice each. Hold still while the ring fills, then come back. It moves on by itself; about 3 minutes.")
+            Text("You'll move into \(recorder.active.count) positions, twice each. Hold still while the ring fills, then come back. It moves on by itself; about 3 minutes.")
                 .foregroundStyle(.secondary)
-            Picker("Style", selection: $style) {
-                Text("A pointer").tag("A")
-                Text("B ring").tag("B")
+            Toggle(isOn: $recorder.pocketMode) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("iPhone in a chest pocket")
+                    Text("Also records your trunk, to catch slouching. Position names are read aloud.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
-            .pickerStyle(.segmented)
             Spacer()
             if !tracker.connected && !PostureTracker.isDemo {
                 Label("Put both AirPods in first", systemImage: "airpods").foregroundStyle(.secondary)
@@ -78,11 +73,14 @@ struct RecordView: View {
                     .stroke(Color.primary, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 0.15), value: recorder.fill)
-                if style == "A" { pointer } else { ringCentre }
+                if recorder.stage == .pocket {
+                    Text("\(recorder.pocketCountdown)").font(.system(size: 64, weight: .semibold, design: .rounded)).monospacedDigit()
+                } else {
+                    pointer
+                }
             }
             .frame(width: 240, height: 240)
             Text(hint).font(.headline).foregroundStyle(.secondary).frame(minHeight: 24)
-            if style == "B" { progressDots }
             Spacer()
             if !tracker.connected && !PostureTracker.isDemo {
                 Label("An AirPod is out. Put it back in to continue", systemImage: "exclamationmark.triangle")
@@ -92,7 +90,7 @@ struct RecordView: View {
                 Text("\(recorder.completed)/\(recorder.total) done · \(recorder.sampleCount) samples")
                     .font(.footnote).foregroundStyle(.secondary).monospacedDigit()
                 Spacer()
-                if recorder.position != nil, recorder.stage != .centre {
+                if recorder.position != nil, ![.centre, .pocket].contains(recorder.stage) {
                     Button("Skip") { recorder.skipPosition() }.buttonStyle(.bordered).tint(.primary)
                 }
             }
@@ -112,39 +110,16 @@ struct RecordView: View {
         }
     }
 
-    /// B: just the state in the middle of the ring.
-    private var ringCentre: some View {
-        Group {
-            switch recorder.stage {
-            case .hold, .centre, .settle:
-                Text("\(Int((recorder.fill * 100).rounded()))%").font(.system(size: 44, weight: .semibold, design: .rounded)).monospacedDigit()
-            case .back:
-                Image(systemName: "checkmark").font(.system(size: 56, weight: .semibold))
-            default:
-                Image(systemName: "arrow.down.forward").font(.system(size: 48, weight: .regular)).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var progressDots: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<recorder.total, id: \.self) { i in
-                Circle()
-                    .fill(i < recorder.completed ? Color.primary : Color.secondary.opacity(0.25))
-                    .frame(width: 9, height: 9)
-                    .overlay(Circle().stroke(Color.primary, lineWidth: i == recorder.completed ? 1.5 : 0).padding(-3))
-            }
-        }
-    }
-
     private var stepLabel: String {
+        if recorder.stage == .pocket { return "Starting" }
         guard let p = recorder.position, recorder.stage != .centre else { return "Getting your upright position" }
         return "\(p.title) · \(recorder.rep) of \(PositionRecorder.reps)"
     }
 
     private var headline: String {
         switch recorder.stage {
-        case .centre: "Sit as you normally would and look at the screen"
+        case .pocket: "Put your phone in your chest pocket, screen facing you"
+        case .centre: recorder.pocketMode ? "Sit as you normally do and keep still" : "Sit as you normally would and look at the screen"
         case .into, .hold: recorder.position?.cue ?? ""
         case .back, .settle: "Come back to how you normally sit"
         default: ""
