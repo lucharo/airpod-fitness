@@ -10,6 +10,9 @@ final class FeedbackTone {
     var level: Double = 0
     /// Called after the audio came back from an interruption, so the tracker can restart motion too.
     var onResumed: (() -> Void)?
+    /// True from an interruption starting (mic, call, Siri) until the audio is back.
+    private(set) var interrupted = false
+    private(set) var interruptions = 0
 
     private let engine = AVAudioEngine()
     private var sampleRate = 48_000.0
@@ -73,6 +76,7 @@ final class FeedbackTone {
             connect()
             try? engine.start()
         }
+        if engine.isRunning { interrupted = false }
         onResumed?()
     }
 
@@ -106,7 +110,12 @@ final class FeedbackTone {
         let nc = NotificationCenter.default
         nc.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
             guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                  AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+            if type == .began {
+                self?.interrupted = true
+                self?.interruptions += 1
+                return
+            }
             // resume regardless of shouldResume: this app's audio is silent and mixes with others
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self?.resume() }
         }

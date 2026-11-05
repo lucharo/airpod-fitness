@@ -15,6 +15,15 @@ struct HomeView: View {
                     .buttonStyle(.bordered)
                     .tint(.primary)
                 Spacer(minLength: 0)
+                if tracker.running && !tracker.soundOK && !PostureTracker.isDemo {
+                    VStack(spacing: 8) {
+                        Label("Sound is off: another app took the audio", systemImage: "speaker.slash")
+                            .font(.subheadline.weight(.semibold))
+                        Button("Turn sound back on") { tracker.restoreSound() }
+                            .buttonStyle(.borderedProminent).tint(.primary)
+                            .foregroundStyle(Color(uiColor: .systemBackground))
+                    }
+                }
                 if !tracker.connected && tracker.running {
                     Label("AirPods not connected", systemImage: "airpods")
                         .font(.subheadline).foregroundStyle(.secondary)

@@ -89,7 +89,8 @@ final class PostureTracker: NSObject, ObservableObject {
         watchdog = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.running else { return }
-                if !self.feedback.isRunning { self.feedback.resume() }
+                if !self.feedback.isRunning || self.feedback.interrupted { self.feedback.resume() }
+                self.refreshSoundState()
                 self.restartMotionIfStale(reason: "watchdog")
             }
         }
@@ -97,6 +98,31 @@ final class PostureTracker: NSObject, ObservableObject {
 
     /// Times motion updates were restarted after stopping (e.g. after the microphone was used).
     @Published private(set) var motionRestarts = 0
+    /// Whether the nudge sound can play right now; false after another app took the audio.
+    @Published private(set) var soundOK = true
+    @Published private(set) var audioInterruptions = 0
+
+    /// Bring the sound back by hand (the banner's button) and confirm with a chime.
+    func restoreSound() {
+        feedback.resume()
+        refreshSoundState()
+        if soundOK { feedback.chime() }
+    }
+
+    func testChime() {
+        if !feedback.isRunning { feedback.resume() }
+        refreshSoundState()
+        feedback.chime()
+    }
+
+    private func refreshSoundState() {
+        let ok = feedback.isRunning && !feedback.interrupted
+        if ok != soundOK {
+            soundOK = ok
+            write("# sound \(ok ? "back" : "lost") at \(Date().timeIntervalSince1970)\n")
+        }
+        audioInterruptions = feedback.interruptions
+    }
     private var watchdog: Timer?
     private var lastSampleWall = Date()
 

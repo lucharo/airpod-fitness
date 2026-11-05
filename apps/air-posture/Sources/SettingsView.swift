@@ -36,6 +36,9 @@ struct SettingsView: View {
                     row("Samples in background", "\(tracker.backgroundSamples)")
                     row("Longest gap in background", String(format: "%.1f s", tracker.longestBackgroundGap))
                     row("Motion restarts (after mic use)", "\(tracker.motionRestarts)")
+                    row("Sound", tracker.soundOK ? "On" : "Off (interrupted)")
+                    row("Audio interruptions", "\(tracker.audioInterruptions)")
+                    Button("Play test chime") { tracker.testChime() }
                     ShareLink("Export log", item: tracker.logURL)
                 }
 
