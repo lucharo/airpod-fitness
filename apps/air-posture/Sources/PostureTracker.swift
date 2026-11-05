@@ -17,7 +17,21 @@ final class PostureTracker: NSObject, ObservableObject {
     /// 0...1 while a 2-second recalibration is collecting samples; nil otherwise.
     @Published var calibrationProgress: Double?
     @Published var calibratedAt: Date?
-    @Published var thresholdDegrees = 12.0
+    /// Head drop (degrees past calibration, + = down) sampled at 5 Hz for the last 30 s, oldest first.
+    @Published private(set) var dropHistory: [Double] = []
+    private var lastHistoryAppend = Date.distantPast
+
+    private func appendHistory() {
+        let now = Date()
+        guard now.timeIntervalSince(lastHistoryAppend) >= 0.2 else { return }
+        lastHistoryAppend = now
+        dropHistory.append(drop)
+        if dropHistory.count > 150 { dropHistory.removeFirst(dropHistory.count - 150) }
+    }
+    @Published var thresholdDegrees = UserDefaults.standard.object(forKey: "nudgeDegrees") as? Double ?? 12 {
+        didSet { UserDefaults.standard.set(thresholdDegrees, forKey: "nudgeDegrees") }
+    }
+    static let nudgeRange = 3.0...35.0
     @Published var sampleCount = 0
     @Published var longestBackgroundGap = 0.0          // seconds
     @Published var backgroundSamples = 0
@@ -66,13 +80,42 @@ final class PostureTracker: NSObject, ObservableObject {
         if Self.isDemo { startDemo(); return }
         openLog()
         do { try feedback.start() } catch { lastError = "Audio: \(error.localizedDescription)" }
+        feedback.onResumed = { [weak self] in
+            MainActor.assumeIsolated { self?.restartMotionIfStale(reason: "audio resumed") }
+        }
+        startMotion()
+        running = true
+        // watchdog: the microphone (dictation, calls) can stop both audio and motion updates
+        watchdog = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.running else { return }
+                if !self.feedback.isRunning { self.feedback.resume() }
+                self.restartMotionIfStale(reason: "watchdog")
+            }
+        }
+    }
+
+    /// Times motion updates were restarted after stopping (e.g. after the microphone was used).
+    @Published private(set) var motionRestarts = 0
+    private var watchdog: Timer?
+    private var lastSampleWall = Date()
+
+    private func startMotion() {
+        lastSampleWall = Date()
         manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
             MainActor.assumeIsolated {
                 if let error { self?.lastError = error.localizedDescription }
                 if let motion { self?.handle(motion) }
             }
         }
-        running = true
+    }
+
+    private func restartMotionIfStale(reason: String) {
+        guard running, !Self.isDemo, connected, Date().timeIntervalSince(lastSampleWall) > 3 else { return }
+        manager.stopDeviceMotionUpdates()
+        startMotion()
+        motionRestarts += 1
+        write("# motion restarted (\(reason)) at \(Date().timeIntervalSince1970)\n")
     }
 
     private func startDemo() {
@@ -101,6 +144,7 @@ final class PostureTracker: NSObject, ObservableObject {
                     self.pitch = -(dropArg ?? (9 + 9 * sin(t / 4)))
                 }
                 self.updateCalibration()
+                self.appendHistory()
                 self.sampleCount += 1
                 self.secondsStill = t
             }
@@ -108,6 +152,8 @@ final class PostureTracker: NSObject, ObservableObject {
     }
 
     func stop() {
+        watchdog?.invalidate()
+        watchdog = nil
         demoTimer?.invalidate()
         demoTimer = nil
         manager.stopDeviceMotionUpdates()
@@ -117,9 +163,9 @@ final class PostureTracker: NSObject, ObservableObject {
         running = false
     }
 
-    /// Hands-free calibration. The person taps, puts the phone down and looks at their monitor;
+    /// Calibration. The person taps and looks straight ahead (sitting or standing, phone anywhere);
     /// after a grace period for that, 2 s of holding still sets the reference, confirmed by a chime and voice.
-    /// The reference is "eyes on the monitor, sitting tall", never a moment of looking at the phone.
+    /// that direction becomes 0°. Absolute AirPods pitch depends on how the buds sit in the ear, so it is not judged.
     func startCalibration() {
         if !running { start() }
         calibrationSum = 0
@@ -128,13 +174,13 @@ final class PostureTracker: NSObject, ObservableObject {
         calibrationStart = Date()
         calibrationProgress = 0
         calibrationWarning = nil
-        Speaker.shared.say("Put the phone down. Look at your monitor and sit tall.")
+        Speaker.shared.say("Look straight ahead and keep still.")
     }
 
-    /// Set when the captured reference looks like looking down rather than at a monitor.
+    /// Reserved for a future plausibility check; nil today.
     @Published var calibrationWarning: String?
 
-    static let calibrationGrace = 3.0     // s to put the phone down and look up
+    static let calibrationGrace = 2.0     // s to look up after tapping
     static let calibrationHold = 2.0      // s of stillness that sets the reference
     private var calibrationSum = 0.0, calibrationCount = 0.0, calibrationStill = 0.0
     private var calibrationMin = 0.0, calibrationMax = 0.0
@@ -150,7 +196,7 @@ final class PostureTracker: NSObject, ObservableObject {
         lastCalibrationSample = now
         guard now.timeIntervalSince(calibrationStart) > Self.calibrationGrace else { return }
         // still = slow rotation AND the head stays within a 3° pitch band, so a slow lift
-        // from the phone to the monitor can't be averaged in
+        // (e.g. from the phone to straight ahead) can't be averaged in
         if calibrationCount == 0 { calibrationMin = pitch; calibrationMax = pitch }
         let lo = min(calibrationMin, pitch), hi = max(calibrationMax, pitch)
         if lastRotationRate < 0.1 && hi - lo < 3 {
@@ -172,12 +218,7 @@ final class PostureTracker: NSObject, ObservableObject {
             calibrationProgress = nil
             calibrationHaptic.notificationOccurred(.success)
             feedback.chime()
-            if value < -15 {
-                calibrationWarning = "That looked like your head was tilted down. If you were looking at the phone, recalibrate while looking at your monitor."
-                Speaker.shared.say("Set, but your head looked tilted down. Check the phone.")
-            } else {
-                Speaker.shared.say("Set.")
-            }
+            Speaker.shared.say("Set.")
         }
     }
 
@@ -195,6 +236,7 @@ final class PostureTracker: NSObject, ObservableObject {
             longestBackgroundGap = max(longestBackgroundGap, now - last)
         }
         lastSampleTime = now
+        lastSampleWall = Date()
         if !isForeground { backgroundSamples += 1 }
 
         pitch = motion.attitude.pitch * 180 / .pi
@@ -207,6 +249,7 @@ final class PostureTracker: NSObject, ObservableObject {
 
         updateStillness(rotation: motion.rotationRate)
         updateFeedback()
+        appendHistory()
         onSample?(MotionSample(motion))
 
         write(String(format: "%.3f,%@,%.2f,%.2f,%.2f,%.3f,%.2f\n",

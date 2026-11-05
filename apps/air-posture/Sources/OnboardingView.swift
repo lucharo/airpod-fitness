@@ -53,7 +53,7 @@ struct OnboardingView: View {
             Image("AppIconImage").resizable().frame(width: 88, height: 88)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             Text("Keep your head up while you sit.").font(.largeTitle.bold())
-            Text("Air Posture reads the motion sensors in your AirPods. When your head drops forward from where it is when you look at your monitor, you hear a soft tone that gets stronger the further you go. Lift your head and it stops.")
+            Text("Air Posture reads the motion sensors in your AirPods. When your head drops forward from looking straight ahead, you hear a soft tone that gets stronger the further you go. Lift your head and it stops.")
                 .font(.body).foregroundStyle(.secondary)
         }
     }
@@ -75,11 +75,11 @@ struct OnboardingView: View {
                 .font(.system(size: 56))
                 .accessibilityHidden(true)
             Text("Show it your good position").font(.largeTitle.bold())
-            Text("Tap Calibrate, put the phone down on the desk, then sit tall and look at your computer monitor. Hold still until you hear the chime; you don't need to look at the phone.")
+            Text("Tap Calibrate, then look straight ahead and keep still until you hear the chime. Sitting or standing, it doesn't matter. Straight ahead becomes 0°.")
                 .foregroundStyle(.secondary)
             if let p = tracker.calibrationProgress {
                 ProgressView(value: p)
-                Text(p > 0 ? "Hold still…" : "Phone down, eyes on your monitor").font(.headline)
+                Text(p > 0 ? "Hold still…" : "Look straight ahead").font(.headline)
             }
             if let w = tracker.calibrationWarning {
                 Label(w, systemImage: "exclamationmark.triangle").font(.footnote)

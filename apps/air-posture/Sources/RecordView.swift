@@ -132,7 +132,7 @@ struct RecordView: View {
     private var headline: String {
         switch recorder.stage {
         case .placing: recorder.pocketMode ? "Phone in your chest pocket" : "Put the phone down"
-        case .usual: "Sit as you usually do, eyes on your monitor"
+        case .usual: "Sit as you usually do, looking straight ahead"
         case .into, .hold: recorder.position?.title ?? ""
         case .back: "Come back"
         case .rest: "Next: \(nextTitle)"

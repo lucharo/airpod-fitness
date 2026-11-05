@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Starts hands-free calibration: put the phone down, look at the monitor, sit tall, wait for the chime.
+/// Starts calibration: look straight ahead and keep still until the chime. That direction is 0°.
 struct CalibrateButton: View {
     @ObservedObject var tracker: PostureTracker
     var title = "Recalibrate"
@@ -16,10 +16,10 @@ struct CalibrateButton: View {
                 HStack(spacing: 10) {
                     if let p = tracker.calibrationProgress {
                         ProgressView(value: p).frame(width: 60)
-                        Text(p > 0 ? "Hold still…" : "Phone down, eyes on your monitor")
+                        Text(p > 0 ? "Hold still…" : "Look straight ahead")
                     } else if justSet {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Set: eyes on monitor, sitting tall")
+                        Text("Set: straight ahead is 0°")
                     } else {
                         Image(systemName: "scope")
                         Text(title)

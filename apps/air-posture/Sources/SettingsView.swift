@@ -10,8 +10,8 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Stepper("Nudge after \(Int(tracker.thresholdDegrees))° of head drop",
-                            value: $tracker.thresholdDegrees, in: 4...40, step: 2)
+                    Stepper("Nudge at \(Int(tracker.thresholdDegrees))° below straight ahead",
+                            value: $tracker.thresholdDegrees, in: PostureTracker.nudgeRange, step: 1)
                     Stepper("Move reminder after \(Int(tracker.stillReminderMinutes)) min still",
                             value: $tracker.stillReminderMinutes, in: 1...90, step: 1)
                     CalibrateButton(tracker: tracker)
@@ -35,6 +35,7 @@ struct SettingsView: View {
                     row("Samples", "\(tracker.sampleCount)")
                     row("Samples in background", "\(tracker.backgroundSamples)")
                     row("Longest gap in background", String(format: "%.1f s", tracker.longestBackgroundGap))
+                    row("Motion restarts (after mic use)", "\(tracker.motionRestarts)")
                     ShareLink("Export log", item: tracker.logURL)
                 }
 

@@ -23,8 +23,8 @@ final class PositionRecorder: ObservableObject {
         .init(id: "lap_down", title: "Look at your lap", cue: "Look down at your lap, as if reading your phone"),
         .init(id: "desk_down", title: "Look at the desk", cue: "Look down at your desk or keyboard"),
         .init(id: "slouch", title: "Slouch", cue: "Slouch. Let your back round and sink into the chair"),
-        .init(id: "chin_forward", title: "Chin forward", cue: "Push your chin toward the monitor, eyes level"),
-        .init(id: "lean_forward", title: "Lean in", cue: "Lean your whole body toward the monitor"),
+        .init(id: "chin_forward", title: "Chin forward", cue: "Push your chin forward, eyes level"),
+        .init(id: "lean_forward", title: "Lean in", cue: "Lean your whole body forward"),
         .init(id: "recline", title: "Recline", cue: "Lean back into your chair"),
         .init(id: "look_up", title: "Look up", cue: "Look up at the ceiling"),
         .init(id: "turn_left", title: "Turn left", cue: "Turn your head to look left"),
@@ -88,7 +88,7 @@ final class PositionRecorder: ObservableObject {
         let header = """
         # Air Posture position recording, build \(build), \(Date()), mode=\(pocketMode ? "pocket" : "desk")
         # reps=\(Self.reps) usualHold=\(Self.usualHold)s positionHold=\(Self.positionHold)s restHold=\(Self.restHold)s stillRotation=\(Self.stillRotation)rad/s movedDegrees=\(Self.movedDegrees)
-        # position "usual" = how you usually sit, eyes on the monitor. phases: rest (settled before a position), into, hold, back.
+        # position "usual" = how you usually sit, looking straight ahead. phases: rest (settled before a position), into, hold, back.
         # still = AirPods still on this sample; moved_by = what first registered the move (angle, accel, trunk, timeout)
         # angles in degrees, acceleration in g, rotation in rad/s; ph_* = iPhone in a chest pocket (pocket mode only)
         t_wall,t_sensor,position,phase,rep,still,moved_by,qx,qy,qz,qw,pitch,roll,yaw,grav_x,grav_y,grav_z,acc_x,acc_y,acc_z,rot_x,rot_y,rot_z,sensor,ph_pitch,ph_roll,ph_yaw,ph_grav_x,ph_grav_y,ph_grav_z,ph_acc_x,ph_acc_y,ph_acc_z
@@ -123,7 +123,7 @@ final class PositionRecorder: ObservableObject {
                 if placed || timedOut {
                     self.placingTimer?.invalidate()
                     self.handle?.write(Data("# placing ended by \(placed ? "detection" : "20 s fallback")\n".utf8))
-                    self.say.say("Sit as you usually do and look at your monitor. Hold still.")
+                    self.say.say("Sit as you usually do, looking straight ahead. Hold still.")
                     self.enter(.usual)
                 }
             }
