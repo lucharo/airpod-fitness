@@ -15,6 +15,18 @@ struct HomeView: View {
                     .buttonStyle(.bordered)
                     .tint(.primary)
                 Spacer(minLength: 0)
+                if tracker.suggestRecalibrate {
+                    VStack(spacing: 8) {
+                        Label("AirPod back in. Its angle may have changed.", systemImage: "airpods")
+                            .font(.subheadline.weight(.semibold))
+                        HStack {
+                            CalibrateButton(tracker: tracker, title: "Recalibrate")
+                                .buttonStyle(.borderedProminent).tint(.primary)
+                                .foregroundStyle(Color(uiColor: .systemBackground))
+                            Button("Not now") { tracker.suggestRecalibrate = false }.buttonStyle(.bordered).tint(.primary)
+                        }
+                    }
+                }
                 if tracker.running && !tracker.soundOK && !PostureTracker.isDemo {
                     VStack(spacing: 8) {
                         Label("Sound is off: another app took the audio", systemImage: "speaker.slash")

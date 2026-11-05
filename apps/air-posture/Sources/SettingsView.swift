@@ -22,7 +22,14 @@ struct SettingsView: View {
                 Section {
                     Toggle("Pause when an AirPod comes out", isOn: $tracker.pauseWhenAirPodOut)
                 } footer: {
-                    Text("Off: keeps nudging using the AirPod still in, e.g. if you wear one. On: taking the measuring AirPod out pauses nudges until it's back, handy when you're talking to someone.")
+                    Text("On: take an AirPod out to pause nudges (say, to talk to someone); put it back and they resume. Off: keeps nudging with the AirPod still in, if you wear just one.")
+                }
+
+                Section("Known limitations") {
+                    limitation("figure.walk", "It measures your head, not your body. Leaning your whole body forward counts as your head dropping, and slouching while your eyes stay level doesn't show.")
+                    limitation("airpods", "iOS says which AirPod is measuring, not whether both are in. Pausing only happens when that AirPod comes out (see Measuring from).")
+                    limitation("scope", "Taking an AirPod out and back in can change its angle in your ear, so you'll be offered a recalibration. A bud that just shifts in your ear can't be detected; recalibrate if the numbers look off.")
+                    limitation("mic", "Apps that use the microphone (dictation, calls) can stop the sound. You'll see a banner to turn it back on.")
                 }
 
                 Section("AirPods") {
@@ -57,6 +64,10 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .toolbar { Button("Done") { dismiss() } }
         }
+    }
+
+    private func limitation(_ icon: String, _ text: String) -> some View {
+        Label { Text(text).font(.subheadline) } icon: { Image(systemName: icon) }
     }
 
     private func row(_ label: String, _ value: String) -> some View {

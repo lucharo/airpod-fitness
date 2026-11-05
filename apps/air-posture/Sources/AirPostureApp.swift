@@ -12,6 +12,7 @@ struct AirPostureApp: App {
                 if onboarded && !ProcessInfo.processInfo.arguments.contains("-onboarding") {
                     HomeView(tracker: tracker)
                         .onAppear {
+                            tracker.requestQuietNotifications()
                             tracker.start()
                             if ProcessInfo.processInfo.arguments.contains("-autoCalibrate") {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { tracker.startCalibration() }

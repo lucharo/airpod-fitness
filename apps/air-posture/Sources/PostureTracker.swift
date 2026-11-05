@@ -1,4 +1,5 @@
 import CoreMotion
+import UserNotifications
 import UIKit
 import Foundation
 
@@ -73,13 +74,30 @@ final class PostureTracker: NSObject, ObservableObject {
     // iOS reports which AirPod the motion comes from (sensorLocation), not whether both are in.
     // When the measuring AirPod comes out, the stream switches to the other one.
 
-    /// Off (default): keep tracking with the remaining AirPod. On: pause until the first one is back.
-    @Published var pauseWhenAirPodOut = UserDefaults.standard.bool(forKey: "pauseWhenAirPodOut") {
+    /// On (default): taking an AirPod out pauses nudges until it's back. Off: keep tracking with the other one.
+    @Published var pauseWhenAirPodOut = UserDefaults.standard.object(forKey: "pauseWhenAirPodOut") as? Bool ?? true {
         didSet { UserDefaults.standard.set(pauseWhenAirPodOut, forKey: "pauseWhenAirPodOut") }
     }
     @Published private(set) var measuringFrom = "–"
     @Published private(set) var airPodSwitches = 0
     @Published private(set) var pausedForAirPod = false
+    /// An AirPod went back in: its angle in the ear may have changed, so offer to recalibrate.
+    @Published var suggestRecalibrate = false
+
+    private func airPodBackIn() {
+        suggestRecalibrate = true
+        write("# AirPod back in, suggesting recalibration at \(Date().timeIntervalSince1970)\n")
+        guard !isForeground else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "AirPod back in"
+        content.body = "Its angle in your ear may have changed. Open Air Posture to recalibrate."
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "recalibrate", content: content, trigger: nil))
+    }
+
+    /// Quiet (provisional) notifications need no permission prompt; they land in Notification Center.
+    func requestQuietNotifications() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .provisional]) { _, _ in }
+    }
     private var primarySensor: String?
     private var quietUntil = Date.distantPast
 
@@ -94,7 +112,9 @@ final class PostureTracker: NSObject, ObservableObject {
         write("# measuring AirPod changed \(measuringFrom) -> \(sensor) at \(Date().timeIntervalSince1970)\n")
         quietUntil = Date().addingTimeInterval(2)   // the switch itself produces a jump; don't nudge on it
         if pauseWhenAirPodOut {
+            let wasPaused = pausedForAirPod
             pausedForAirPod = sensor != primarySensor
+            if wasPaused && !pausedForAirPod { airPodBackIn() }
         } else if let b = baselinePitch {
             // same head, different ear: keep the reading continuous across the switch
             baselinePitch = b + (newPitch - previousPitch)
@@ -275,6 +295,7 @@ final class PostureTracker: NSObject, ObservableObject {
             calibratedAt = now
             primarySensor = measuringFrom   // the AirPod in use when calibrating is the one "pause" waits for
             pausedForAirPod = false
+            suggestRecalibrate = false
             calibrationProgress = nil
             calibrationHaptic.notificationOccurred(.success)
             feedback.chime()
@@ -354,7 +375,11 @@ final class PostureTracker: NSObject, ObservableObject {
 
 extension PostureTracker: CMHeadphoneMotionManagerDelegate {
     nonisolated func headphoneMotionManagerDidConnect(_ manager: CMHeadphoneMotionManager) {
-        Task { @MainActor in self.connected = true; self.write("# airpods connected\n") }
+        Task { @MainActor in
+            if !self.connected && self.baselinePitch != nil { self.airPodBackIn() }
+            self.connected = true
+            self.write("# airpods connected\n")
+        }
     }
 
     nonisolated func headphoneMotionManagerDidDisconnect(_ manager: CMHeadphoneMotionManager) {
