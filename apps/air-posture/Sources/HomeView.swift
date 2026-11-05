@@ -80,6 +80,8 @@ struct StatusLine: View {
     var body: some View {
         if !tracker.running {
             Label("Paused", systemImage: "pause.circle")
+        } else if !tracker.connected && !PostureTracker.isDemo {
+            Label("Paused: AirPods disconnected", systemImage: "airpods")
         } else if tracker.pausedForAirPod {
             Label("Paused: an AirPod is out", systemImage: "airpods")
         } else if tracker.isUpright {

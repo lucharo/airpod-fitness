@@ -13,6 +13,14 @@ final class FeedbackTone {
     /// True from an interruption starting (mic, call, Siri) until the audio is back.
     private(set) var interrupted = false
     private(set) var interruptions = 0
+    /// False whenever the output isn't headphones (e.g. the phone's own speaker after the AirPods
+    /// disconnect). The render callback then outputs silence, tone and chime alike.
+    private(set) var routeIsHeadphones = false
+
+    private func updateRoute() {
+        let ok: Set<AVAudioSession.Port> = [.bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .headphones]
+        routeIsHeadphones = AVAudioSession.sharedInstance().currentRoute.outputs.contains { ok.contains($0.portType) }
+    }
 
     private let engine = AVAudioEngine()
     private var sampleRate = 48_000.0
@@ -26,7 +34,8 @@ final class FeedbackTone {
         AVAudioSourceNode { [unowned self] _, _, frameCount, bufferList -> OSStatus in
             let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
             let sr = sampleRate
-            let lvl = level
+            let lvl = routeIsHeadphones ? level : 0
+            let muteChime = !routeIsHeadphones
             let freq = 330 + 330 * lvl
             let amp = Float(0.25 * lvl)
             for frame in 0..<Int(frameCount) {
@@ -34,6 +43,7 @@ final class FeedbackTone {
                 phase += 2 * .pi * freq / sr
                 if phase > 2 * .pi { phase -= 2 * .pi }
                 // chime: two soft notes (E5 then B5), each with a fast attack and exponential decay
+                if chimeFrame >= 0 && muteChime { chimeFrame = -1 }
                 if chimeFrame >= 0 {
                     let half = max(chimeLength / 2, 1)
                     let local = chimeFrame % half
@@ -58,6 +68,7 @@ final class FeedbackTone {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playback, options: [.mixWithOthers])
         try session.setActive(true)
+        updateRoute()
         connect()
         try engine.start()
         observe()
@@ -72,6 +83,7 @@ final class FeedbackTone {
     func resume() {
         try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
+        updateRoute()
         if !engine.isRunning {
             connect()
             try? engine.start()
@@ -120,6 +132,7 @@ final class FeedbackTone {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self?.resume() }
         }
         nc.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.updateRoute()   // immediately, so a switch to the speaker is silent at once
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self?.resume() }
         }
         nc.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in

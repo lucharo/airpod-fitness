@@ -29,6 +29,7 @@ struct SettingsView: View {
                     limitation("figure.walk", "It measures your head, not your body. Leaning your whole body forward counts as your head dropping, and slouching while your eyes stay level doesn't show.")
                     limitation("airpods", "iOS says which AirPod is measuring, not whether both are in. Pausing only happens when that AirPod comes out (see Measuring from).")
                     limitation("scope", "Taking an AirPod out and back in can change its angle in your ear, so you'll be offered a recalibration. A bud that just shifts in your ear can't be detected; recalibrate if the numbers look off.")
+                    limitation("speaker.slash", "Sound only ever plays through headphones. If the AirPods disconnect, nudges pause; they never come out of the phone's speaker.")
                     limitation("mic", "Apps that use the microphone (dictation, calls) can stop the sound. You'll see a banner to turn it back on.")
                 }
 

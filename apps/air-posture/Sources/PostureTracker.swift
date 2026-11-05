@@ -318,6 +318,7 @@ final class PostureTracker: NSObject, ObservableObject {
         }
         lastSampleTime = now
         lastSampleWall = Date()
+        if !connected { connected = true }   // samples only arrive from connected AirPods
         if !isForeground { backgroundSamples += 1 }
 
         let previousPitch = pitch
@@ -343,7 +344,7 @@ final class PostureTracker: NSObject, ObservableObject {
 
     /// Graded feedback: silent below the threshold, louder and higher the further past it.
     private func updateFeedback() {
-        guard baselinePitch != nil, !muteFeedback, !pausedForAirPod, Date() > quietUntil else { feedback.level = 0; return }
+        guard baselinePitch != nil, !muteFeedback, !pausedForAirPod, connected, Date() > quietUntil else { feedback.level = 0; return }
         let excess = drop - thresholdDegrees
         feedback.level = excess > 0 ? min(1, excess / 20) : 0
     }
@@ -383,7 +384,11 @@ extension PostureTracker: CMHeadphoneMotionManagerDelegate {
     }
 
     nonisolated func headphoneMotionManagerDidDisconnect(_ manager: CMHeadphoneMotionManager) {
-        Task { @MainActor in self.connected = false; self.write("# airpods disconnected\n") }
+        Task { @MainActor in
+            self.connected = false
+            self.feedback.level = 0   // the last angle must not keep the tone going (it would move to the speaker)
+            self.write("# airpods disconnected, nudges paused\n")
+        }
     }
 }
 
