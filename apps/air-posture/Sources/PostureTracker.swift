@@ -69,6 +69,38 @@ final class PostureTracker: NSObject, ObservableObject {
     /// Upright while the head has not dropped past the threshold (or no baseline yet).
     var isUpright: Bool { drop <= thresholdDegrees }
 
+    // MARK: one AirPod out
+    // iOS reports which AirPod the motion comes from (sensorLocation), not whether both are in.
+    // When the measuring AirPod comes out, the stream switches to the other one.
+
+    /// Off (default): keep tracking with the remaining AirPod. On: pause until the first one is back.
+    @Published var pauseWhenAirPodOut = UserDefaults.standard.bool(forKey: "pauseWhenAirPodOut") {
+        didSet { UserDefaults.standard.set(pauseWhenAirPodOut, forKey: "pauseWhenAirPodOut") }
+    }
+    @Published private(set) var measuringFrom = "–"
+    @Published private(set) var airPodSwitches = 0
+    @Published private(set) var pausedForAirPod = false
+    private var primarySensor: String?
+    private var quietUntil = Date.distantPast
+
+    /// Called with each sample's sensor before the new pitch is applied.
+    private func trackSensor(_ sensor: String, previousPitch: Double, newPitch: Double) {
+        defer { measuringFrom = sensor }
+        guard measuringFrom != "–", sensor != measuringFrom else {
+            if primarySensor == nil { primarySensor = sensor }
+            return
+        }
+        airPodSwitches += 1
+        write("# measuring AirPod changed \(measuringFrom) -> \(sensor) at \(Date().timeIntervalSince1970)\n")
+        quietUntil = Date().addingTimeInterval(2)   // the switch itself produces a jump; don't nudge on it
+        if pauseWhenAirPodOut {
+            pausedForAirPod = sensor != primarySensor
+        } else if let b = baselinePitch {
+            // same head, different ear: keep the reading continuous across the switch
+            baselinePitch = b + (newPitch - previousPitch)
+        }
+    }
+
     /// Simulator screenshots: `-demo` feeds a slow synthetic slouch so the UI has live data.
     static let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
     /// Demo motion that moves and holds, so the guided recorder advances in the simulator.
@@ -241,6 +273,8 @@ final class PostureTracker: NSObject, ObservableObject {
             let value = calibrationSum / max(calibrationCount, 1)
             baselinePitch = value
             calibratedAt = now
+            primarySensor = measuringFrom   // the AirPod in use when calibrating is the one "pause" waits for
+            pausedForAirPod = false
             calibrationProgress = nil
             calibrationHaptic.notificationOccurred(.success)
             feedback.chime()
@@ -265,7 +299,10 @@ final class PostureTracker: NSObject, ObservableObject {
         lastSampleWall = Date()
         if !isForeground { backgroundSamples += 1 }
 
-        pitch = motion.attitude.pitch * 180 / .pi
+        let previousPitch = pitch
+        let newPitch = motion.attitude.pitch * 180 / .pi
+        trackSensor(MotionSample(motion).sensor, previousPitch: previousPitch, newPitch: newPitch)
+        pitch = newPitch
         let r = motion.rotationRate
         lastRotationRate = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
         updateCalibration()
@@ -285,7 +322,7 @@ final class PostureTracker: NSObject, ObservableObject {
 
     /// Graded feedback: silent below the threshold, louder and higher the further past it.
     private func updateFeedback() {
-        guard baselinePitch != nil, !muteFeedback else { feedback.level = 0; return }
+        guard baselinePitch != nil, !muteFeedback, !pausedForAirPod, Date() > quietUntil else { feedback.level = 0; return }
         let excess = drop - thresholdDegrees
         feedback.level = excess > 0 ? min(1, excess / 20) : 0
     }

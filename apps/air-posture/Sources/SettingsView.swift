@@ -19,9 +19,17 @@ struct SettingsView: View {
                     Text("Smaller angles nudge sooner. Recalibrate when you change chair or screen.")
                 }
 
+                Section {
+                    Toggle("Pause when an AirPod comes out", isOn: $tracker.pauseWhenAirPodOut)
+                } footer: {
+                    Text("Off: keeps nudging using the AirPod still in, e.g. if you wear one. On: taking the measuring AirPod out pauses nudges until it's back, handy when you're talking to someone.")
+                }
+
                 Section("AirPods") {
                     row("Motion available", tracker.available ? "Yes" : "No")
                     row("Connected", tracker.connected ? "Yes" : "No")
+                    row("Measuring from", tracker.measuringFrom == "left" ? "Left AirPod" : tracker.measuringFrom == "right" ? "Right AirPod" : tracker.measuringFrom)
+                    row("AirPod switches", "\(tracker.airPodSwitches)")
                     if let error = tracker.lastError {
                         Text(error).foregroundStyle(.red)
                     }
