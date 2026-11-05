@@ -21,3 +21,5 @@ Model oai:gi2.5 (gpt-image-2.5-sunburst), -q high, 1:1, Azure. Prompt: prompt.tx
 | airposture-icon-r2_4.png | stacked stones, earbud on top | shown |
 | airposture-icon-r2_5.png | gyroscope rings around the earbud | shown |
 | airposture-icon-r2_6.png | angle gauge, needle straight up, earbud as pivot | shown |
+
+Unpicked generations (round 1 files 1-6, round 2 files 1, 2, 4, 5, 6) are archived outside the repo in ~/.local/share/airpod-fitness/session-artifacts/5ac9bfdd-65ee-5f33-80f7-a2c24c81e06a/icon-candidates (with a SHA-256 manifest); the two option sheets above show them all.

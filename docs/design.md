@@ -20,7 +20,12 @@
 3. Away from the camera, AirPods alone apply that calibration.
 4. Watch: wrist haptics and the movement reminder, not posture.
 
-## Spike questions (apps/air-posture)
+## Spike questions (apps/air-posture), answered 2026-11-05
+
+1. Background: yes, tracking continues with the phone locked (confirmed on device). Microphone use interrupts the audio; recovery is in build 10 and later.
+2. and 3. A calibrated pitch drop works as the trigger; the nudge angle is now user-adjustable. Slouching needs a trunk sensor (issue #2).
+
+The original questions:
 
 1. Does headphone motion keep streaming with the phone locked, given an active audio session? Read from "Longest gap in background" and the CSV.
 2. Is pitch drop past a calibrated baseline a usable trigger, and what threshold feels right?

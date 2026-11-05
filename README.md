@@ -4,10 +4,10 @@ Apps that use AirPods head motion as a body sensor.
 
 | App | Status | Idea |
 | --- | --- | --- |
-| [Air Posture](apps/air-posture) | spike | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
-| RepSense | idea | Count reps (push-ups, squats, pull-ups) from head motion, optionally fused with Apple Watch. |
+| [Air Posture](apps/air-posture) | TestFlight beta | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
+| RepSense | idea (#4) | Count reps (push-ups, squats, pull-ups) from head motion, optionally fused with Apple Watch. |
 
-Design notes: [docs/design.md](docs/design.md). Earlier conversations that led here: [docs/prior-conversations](docs/prior-conversations).
+Questions and answers: [docs/faq](docs/faq/README.md). Design notes: [docs/design.md](docs/design.md). Earlier conversations that led here: [docs/prior-conversations](docs/prior-conversations). Position recordings and their analysis: `data/recordings`, `tools/analyze_positions.py`.
 
 ## Run Air Posture
 
@@ -19,9 +19,11 @@ xcodegen generate
 open AirPosture.xcodeproj   # pick your iPhone, Run
 ```
 
-Spike test: Start, sit tall, Calibrate, lock the phone for 10 minutes while slouching now and then, then reopen. "Samples in background" and "Longest gap in background" answer whether tracking survives in the background; Export log gives the CSV.
+Testers normally install from TestFlight instead. Settings → Diagnostics shows the background, sound and AirPod state; the Record button runs the guided position recorder, whose exported CSV goes in `data/recordings`.
 
 ## TestFlight
+
+Ship a build with `tools/ship-testflight.sh` from the repo root. The details below are what it automates.
 
 App 6830647347 in App Store Connect, bundle `lucharo.airposture`, internal group "Luis". Build 1 uploaded 2026-11-04.
 
