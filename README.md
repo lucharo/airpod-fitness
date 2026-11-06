@@ -4,12 +4,12 @@ Apps that use AirPods head motion as a body sensor.
 
 | App | Status | Idea |
 | --- | --- | --- |
-| [Air Posture](apps/air-posture) | TestFlight beta | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
+| [Heads Up!](apps/air-posture) (folder and bundle ID keep the old Air Posture name) | In App Review prep, [listing](docs/app-store/listing.md) | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
 | RepSense | idea (#4) | Count reps (push-ups, squats, pull-ups) from head motion, optionally fused with Apple Watch. |
 
 Questions and answers: [docs/faq](docs/faq/README.md). Design notes: [docs/design.md](docs/design.md). Earlier conversations that led here: [docs/prior-conversations](docs/prior-conversations). Position recordings and their analysis: `data/recordings`, `tools/analyze_positions.py`.
 
-## Run Air Posture
+## Run Heads Up!
 
 Needs a real iPhone and motion-capable AirPods (Pro, 3rd gen or later, Max, Beats Fit Pro); the simulator has no headphone motion.
 
