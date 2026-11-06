@@ -18,13 +18,13 @@ targets:
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleDisplayName: Air Posture
+        CFBundleDisplayName: "Heads Up!"
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UILaunchScreen: {}
-        NSMotionUsageDescription: Air Posture reads your AirPods head motion to spot when your head drops forward.
+        NSMotionUsageDescription: Heads Up! reads your AirPods head motion to spot when your head drops forward.
         UIBackgroundModes: [audio]
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true

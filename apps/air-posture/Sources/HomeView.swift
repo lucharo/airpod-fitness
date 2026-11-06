@@ -36,6 +36,10 @@ struct HomeView: View {
                             .foregroundStyle(Color(uiColor: .systemBackground))
                     }
                 }
+                if tracker.triedDemo {
+                    Label("Demo: simulated head movement, no sound", systemImage: "play.circle")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
                 if !tracker.connected && tracker.running {
                     Label("AirPods not connected", systemImage: "airpods")
                         .font(.subheadline).foregroundStyle(.secondary)
@@ -52,7 +56,7 @@ struct HomeView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 16)
             }
-            .navigationTitle("Air Posture")
+            .navigationTitle("Heads Up!")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

@@ -90,7 +90,7 @@ final class PostureTracker: NSObject, ObservableObject {
         guard !isForeground else { return }
         let content = UNMutableNotificationContent()
         content.title = "AirPod back in"
-        content.body = "Its angle in your ear may have changed. Open Air Posture to recalibrate."
+        content.body = "Its angle in your ear may have changed. Open Heads Up! to recalibrate."
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "recalibrate", content: content, trigger: nil))
     }
 
@@ -122,7 +122,17 @@ final class PostureTracker: NSObject, ObservableObject {
     }
 
     /// Simulator screenshots: `-demo` feeds a slow synthetic slouch so the UI has live data.
-    static let isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
+    static var isDemo = ProcessInfo.processInfo.arguments.contains("-demo")
+    /// The demo was chosen in onboarding, by someone with no motion-capable AirPods to hand.
+    @Published private(set) var triedDemo = false
+
+    func tryDemo() {
+        Self.isDemo = true
+        triedDemo = true
+        stop()
+        start()
+    }
+
     /// Demo motion that moves and holds, so the guided recorder advances in the simulator.
     static let isDemoGuide = ProcessInfo.processInfo.arguments.contains("-demoGuide")
     private var demoTimer: Timer?
@@ -363,7 +373,18 @@ final class PostureTracker: NSObject, ObservableObject {
         }
     }
 
+    /// Each launch starts a log at about 9 MB per tracked hour, so keep only the newest few.
+    private func pruneLogs(keeping count: Int = 3) {
+        let fm = FileManager.default
+        let files = (try? fm.contentsOfDirectory(at: logURL.deletingLastPathComponent(), includingPropertiesForKeys: nil)) ?? []
+        let logs = files
+            .filter { $0.lastPathComponent.hasPrefix("air-posture-") && !$0.lastPathComponent.hasPrefix("air-posture-positions-") }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }   // the names carry a sortable timestamp
+        for old in logs.dropFirst(count) { try? fm.removeItem(at: old) }
+    }
+
     private func openLog() {
+        pruneLogs()
         FileManager.default.createFile(atPath: logURL.path, contents: Data("t,state,pitch,roll,yaw,rot_rate,drop\n".utf8))
         logHandle = try? FileHandle(forWritingTo: logURL)
         logHandle?.seekToEndOfFile()

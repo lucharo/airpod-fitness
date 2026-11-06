@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Air Posture</string>
+	<string>Heads Up!</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,7 +25,7 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSMotionUsageDescription</key>
-	<string>Air Posture reads your AirPods head motion to spot when your head drops forward.</string>
+	<string>Heads Up! reads your AirPods head motion to spot when your head drops forward.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

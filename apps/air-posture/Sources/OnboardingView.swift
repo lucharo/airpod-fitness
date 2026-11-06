@@ -53,7 +53,7 @@ struct OnboardingView: View {
             Image("AppIconImage").resizable().frame(width: 88, height: 88)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             Text("Keep your head up while you sit.").font(.largeTitle.bold())
-            Text("Air Posture reads the motion sensors in your AirPods. When your head drops forward from looking straight ahead, you hear a soft tone that gets stronger the further you go. Lift your head and it stops.")
+            Text("Heads Up! reads the motion sensors in your AirPods. When your head drops forward from looking straight ahead, you hear a soft tone that gets stronger the further you go. Lift your head and it stops.")
                 .font(.body).foregroundStyle(.secondary)
         }
     }
@@ -65,6 +65,10 @@ struct OnboardingView: View {
             Text(tracker.connected ? "AirPods connected" : "Put your AirPods in").font(.largeTitle.bold())
             Text("Works with AirPods Pro, AirPods 3 and 4, AirPods Max and Beats Fit Pro. iOS will ask for Motion permission; that is only for head movement.")
                 .foregroundStyle(.secondary)
+            if !tracker.connected {
+                Button("No AirPods with you? Try a demo") { tracker.tryDemo() }
+                    .font(.subheadline)
+            }
         }
         .onAppear { tracker.start() }
     }
@@ -93,12 +97,13 @@ struct OnboardingView: View {
         switch step {
         case 0: "Get started"
         case 1: tracker.connected || PostureTracker.isDemo ? "Continue" : "Waiting for AirPods…"
-        default: tracker.calibrationProgress != nil ? "Listening…" : tracker.calibrationWarning != nil ? "Calibrate again" : "Calibrate"
+        default: tracker.triedDemo ? "Open the demo" : tracker.calibrationProgress != nil ? "Listening…" : tracker.calibrationWarning != nil ? "Calibrate again" : "Calibrate"
         }
     }
 
     private func next() {
         if step < 2 { withAnimation { step += 1 }; return }
+        if tracker.triedDemo { finish(); return }   // simulated motion has nothing to calibrate
         tracker.startCalibration()
     }
 }
