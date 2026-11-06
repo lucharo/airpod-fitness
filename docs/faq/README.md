@@ -30,4 +30,4 @@ By default nudges pause and resume when it goes back in, and the app offers to r
 
 ## How do I ship a build or read TestFlight feedback?
 
-`tools/ship-testflight.sh` from the repo root: it bumps the build, archives with the App Store Connect API key, exports and uploads on the M1 and waits for processing. Feedback: `uv run tools/asc.py GET "/v1/apps/6830647347/betaFeedbackScreenshotSubmissions"`. See the README's TestFlight section for why signing happens on the M1. (2026-11-05)
+Push to `main`: `.github/workflows/testflight.yml` archives, uploads and waits for Apple to process the build. Feedback: `uv run tools/asc.py GET "/v1/apps/6830647347/betaFeedbackScreenshotSubmissions"`. See the README's TestFlight section. (2026-11-06)

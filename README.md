@@ -23,21 +23,10 @@ Testers normally install from TestFlight instead. Settings → Diagnostics shows
 
 ## TestFlight
 
-Ship a build with `tools/ship-testflight.sh` from the repo root. The details below are what it automates.
+A push to `main` that touches `apps/air-posture` archives the app and uploads it to TestFlight (`.github/workflows/testflight.yml`), and the Actions tab can run it by hand. The internal group "Luis" gets every build. The run goes green only once Apple has finished processing the build, so green means App Store Connect accepted it.
 
-App 6830647347 in App Store Connect, bundle `lucharo.airposture`, internal group "Luis". Build 1 uploaded 2026-11-04.
+App 6830647347 in App Store Connect, bundle `lucharo.airposture`. The build number comes from App Store Connect (`tools/asc.py next-build`, one above the latest upload), so nothing is committed for it. The version is `MARKETING_VERSION` in `apps/air-posture/project.yml`, and it must match the App Store version.
 
-The App Store Connect API key in `~/.appstoreconnect` (M1 and Max) archives and reads App Store Connect, but its role cannot cloud-sign, register bundle IDs or create profiles (403). Distribution therefore signs manually with the "Apple Distribution" certificate in the M1's login keychain and the "Air Posture App Store" profile, and the export must run in the M1's GUI session because SSH cannot unlock the keychain:
+The App Store Connect API key cannot cloud-sign, so CI signs manually: `apps/air-posture/tools/AppStore.xcconfig` and `ExportOptions-manual.plist`, the "Air Posture App Store" profile fetched from the API on each run, and the Apple Distribution certificate from repository secrets. `scripts/ci-testflight-secrets.sh` loads those secrets from the login keychain and `~/.appstoreconnect`; run it again when the certificate or key is renewed. This repo is private, so each macOS minute counts ten times against the plan, which is why the wait for Apple runs on Linux.
 
-```bash
-# Max: archive (bump CURRENT_PROJECT_VERSION in project.yml first)
-cd apps/air-posture && xcodegen generate
-K=~/.appstoreconnect/private_keys/AuthKey_AZ756K8XB6.p8; ISS="$(cat ~/.appstoreconnect/issuer_id)"
-xcodebuild archive -project AirPosture.xcodeproj -scheme AirPosture -destination 'generic/platform=iOS' \
-  -archivePath /tmp/AirPosture.xcarchive -allowProvisioningUpdates -authenticationKeyPath $K -authenticationKeyID AZ756K8XB6 -authenticationKeyIssuerID "$ISS"
-# Copy AirPosture.xcarchive, tools/ExportOptions-manual.plist (as ExportOptions.plist) and
-# ../../tools/export-in-gui-session.sh to a dir on the M1, then on the M1:
-launchctl submit -l com.user.airposture-export -- <dir>/export-in-gui-session.sh <dir>   # writes <dir>/done and export.log
-```
-
-`tools/asc.py` is a small App Store Connect API client on the same key (builds, beta groups, testers, profile download). `tools/brave-js.sh` and `tools/brave-page-js.sh` drive a signed-in Brave over Apple Events for the web-only steps (Brave: View > Developer > Allow JavaScript from Apple Events).
+`tools/asc.py` is also a small App Store Connect API client on the same key. The key's role can read, upload and manage TestFlight, but it gets 403 on App Store listing writes, bundle IDs and profile creation. `tools/brave-js.sh` and `tools/brave-page-js.sh` drive a signed-in Brave over Apple Events for the web-only steps (Brave: View > Developer > Allow JavaScript from Apple Events).

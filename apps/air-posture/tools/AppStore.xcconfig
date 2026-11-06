@@ -1,0 +1,7 @@
+// Manual App Store signing, for a Mac that holds the Apple Distribution certificate but has no
+// account signed in to Xcode. The "Air Posture App Store" profile must be installed; CI fetches it
+// with tools/asc.py. Used as: xcodebuild archive … -xcconfig tools/AppStore.xcconfig
+DEVELOPMENT_TEAM = 7V3HZUL435
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = Air Posture App Store
