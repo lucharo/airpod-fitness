@@ -63,7 +63,10 @@ jobs:
         id: build
         # One above the last upload, by hand or from here, with no version-bump
         # commits. The concurrency group means the last run's build is listed by now.
-        run: echo "number=$(uv run --quiet tools/asc.py next-build)" >> "$GITHUB_OUTPUT"
+        run: |
+          number="$(uv run --quiet tools/asc.py next-build)"
+          [[ "$number" =~ ^[0-9]+$ ]]
+          echo "number=$number" >> "$GITHUB_OUTPUT"
       - name: Install the App Store profile
         run: uv run --quiet tools/asc.py profiles "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
       - name: Archive

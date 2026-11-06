@@ -14,7 +14,9 @@ struct SettingsView: View {
                             value: $tracker.thresholdDegrees, in: PostureTracker.nudgeRange, step: 1)
                     Stepper("Move reminder after \(Int(tracker.stillReminderMinutes)) min still",
                             value: $tracker.stillReminderMinutes, in: 1...90, step: 1)
-                    CalibrateButton(tracker: tracker)
+                    if !tracker.triedDemo {
+                        CalibrateButton(tracker: tracker)
+                    }
                 } footer: {
                     Text("Smaller angles nudge sooner. Recalibrate when you change chair or screen.")
                 }

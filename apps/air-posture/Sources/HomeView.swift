@@ -11,9 +11,11 @@ struct HomeView: View {
             VStack(spacing: 20) {
                 Spacer(minLength: 0)
                 AngleGauge(tracker: tracker)
-                CalibrateButton(tracker: tracker)
-                    .buttonStyle(.bordered)
-                    .tint(.primary)
+                if !tracker.triedDemo {
+                    CalibrateButton(tracker: tracker)
+                        .buttonStyle(.bordered)
+                        .tint(.primary)
+                }
                 Spacer(minLength: 0)
                 if tracker.suggestRecalibrate {
                     VStack(spacing: 8) {
@@ -37,8 +39,12 @@ struct HomeView: View {
                     }
                 }
                 if tracker.triedDemo {
-                    Label("Demo: simulated head movement, no sound", systemImage: "play.circle")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    VStack(spacing: 8) {
+                        Label("Demo: simulated head movement, no sound", systemImage: "play.circle")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Button("Exit demo") { tracker.exitDemo() }
+                            .buttonStyle(.bordered).tint(.primary)
+                    }
                 }
                 if !tracker.connected && tracker.running {
                     Label("AirPods not connected", systemImage: "airpods")
@@ -59,9 +65,11 @@ struct HomeView: View {
             .navigationTitle("Heads Up!")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showRecorder = true } label: { Label("Record", systemImage: "record.circle") }
-                        .labelStyle(.titleAndIcon)
+                if !tracker.triedDemo {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showRecorder = true } label: { Label("Record", systemImage: "record.circle") }
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }

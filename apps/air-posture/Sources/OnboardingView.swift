@@ -79,7 +79,9 @@ struct OnboardingView: View {
                 .font(.system(size: 56))
                 .accessibilityHidden(true)
             Text("Show it your good position").font(.largeTitle.bold())
-            Text("Tap Calibrate, then look straight ahead and keep still until you hear the chime. Sitting or standing, it doesn't matter. Straight ahead becomes 0°.")
+            Text(tracker.triedDemo
+                 ? "With AirPods you'd calibrate here, by looking straight ahead and keeping still. The demo skips this."
+                 : "Tap Calibrate, then look straight ahead and keep still until you hear the chime. Sitting or standing, it doesn't matter. Straight ahead becomes 0°.")
                 .foregroundStyle(.secondary)
             if let p = tracker.calibrationProgress {
                 ProgressView(value: p)

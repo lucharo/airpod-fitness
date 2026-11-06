@@ -133,6 +133,17 @@ final class PostureTracker: NSObject, ObservableObject {
         start()
     }
 
+    func exitDemo() {
+        stop()
+        Self.isDemo = false
+        triedDemo = false
+        connected = false
+        baselinePitch = nil
+        pitch = 0
+        dropHistory = []
+        start()
+    }
+
     /// Demo motion that moves and holds, so the guided recorder advances in the simulator.
     static let isDemoGuide = ProcessInfo.processInfo.arguments.contains("-demoGuide")
     private var demoTimer: Timer?
@@ -255,6 +266,7 @@ final class PostureTracker: NSObject, ObservableObject {
     /// after a grace period for that, 2 s of holding still sets the reference, confirmed by a chime and voice.
     /// that direction becomes 0°. Absolute AirPods pitch depends on how the buds sit in the ear, so it is not judged.
     func startCalibration() {
+        guard !triedDemo else { return }   // simulated motion has nothing to calibrate
         if !running { start() }
         calibrationSum = 0
         calibrationCount = 0
@@ -385,7 +397,9 @@ final class PostureTracker: NSObject, ObservableObject {
 
     private func openLog() {
         pruneLogs()
-        FileManager.default.createFile(atPath: logURL.path, contents: Data("t,state,pitch,roll,yaw,rot_rate,drop\n".utf8))
+        if !FileManager.default.fileExists(atPath: logURL.path) {   // pause and resume keep the same file
+            FileManager.default.createFile(atPath: logURL.path, contents: Data("t,state,pitch,roll,yaw,rot_rate,drop\n".utf8))
+        }
         logHandle = try? FileHandle(forWritingTo: logURL)
         logHandle?.seekToEndOfFile()
     }
