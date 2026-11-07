@@ -1,4 +1,4 @@
-# App Store listing, version 1.0
+# App Store listing, version 1.0.1
 
 What App Store Connect holds for app 6830647347. The folder, bundle ID (`lucharo.airposture`) and Xcode project keep the Air Posture name; users never see them. The API key cannot write the listing, so changes go through the App Store Connect website.
 
@@ -27,30 +27,15 @@ neck,slouch,head,tilt,desk,sitting,ergonomics,reminder,tech neck,headphones,moti
 
 ## Promotional text
 
-A soft tone in your AirPods when your head drops forward. Lift your head and it stops.
+Simple, minimal sound feedback to help keep good posture when walking or looking at a screen.
 
 ## Description
 
-Heads Up! notices when your head drops forward while you sit, and tells you with a soft tone in your AirPods. The further it drops, the stronger the tone. Lift your head and it stops.
+Works with AirPods Pro, AirPods 3 and 4, AirPods Max and Beats Fit Pro.
 
-It works with AirPods Pro, AirPods 3 and 4, AirPods Max and Beats Fit Pro, using the motion sensors already inside them. There's nothing else to wear or charge.
+Simple, minimal sound feedback to help keep good posture when walking or looking at a screen.
 
-HOW IT WORKS
-1. Put your AirPods in, look straight ahead and keep still to set your zero.
-2. Choose how far your head can drop before you get a nudge. It starts at 12°.
-3. Carry on with your day. Nudges keep working while you use other apps, and they mix with your music.
-
-You also get a soft chime if you've kept still for a while. It's set to 30 minutes and you can change it.
-
-WHAT IT MEASURES
-Heads Up! measures your head, not your back. Leaning your whole body forward counts as your head dropping, and slouching with your eyes level doesn't show.
-
-PRIVATE
-No account, no ads, no tracking. Motion readings stay on your iPhone.
-
-Heads Up! is for everyday awareness. It isn't a medical device and doesn't diagnose or treat anything. If you have neck or back pain, talk to a doctor.
-
-AirPods is a trademark of Apple Inc. Heads Up! is not affiliated with or endorsed by Apple.
+Open source: https://github.com/lucharo/airpod-fitness
 
 ## Screenshots
 

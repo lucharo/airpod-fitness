@@ -62,6 +62,7 @@ struct SettingsView: View {
 
                 Section {
                     Button("Show the introduction again") { onboarded = false; dismiss() }
+                    Link("Source code on GitHub", destination: URL(string: "https://github.com/lucharo/airpod-fitness")!)
                 }
             }
             .navigationTitle("Settings")
