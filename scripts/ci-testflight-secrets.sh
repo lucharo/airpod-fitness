@@ -1,8 +1,7 @@
 #!/bin/zsh
 # Load the Apple Distribution signing identity from the login keychain and the
 # App Store Connect key from ~/.appstoreconnect into the repository's Actions
-# secrets, which .github/workflows/testflight.yml reads. They are repository
-# secrets because environments need a paid GitHub plan on a private repo. Run once
+# secrets, which .github/workflows/testflight.yml reads. Run once
 # on the Mac that holds the certificate, and again whenever the certificate or
 # the key is renewed. macOS asks for the login password once per certificate in
 # the keychain.

@@ -55,4 +55,3 @@ AirPods is a trademark of Apple Inc. Heads Up! is not affiliated with or endorse
 ## Screenshots
 
 `screenshots/` holds the 1320 × 2868 set uploaded for iPhone. They are the real app on the iPhone 17 Pro Max simulator with the built-in demo motion, because the simulator has no headphone motion. The 22° reading matches the desk posture in `data/recordings` (21.8° and 22.0°). Reproduce with `-demo -demoDrop 22 -skipOnboarding`.
-

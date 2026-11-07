@@ -88,8 +88,7 @@ jobs:
           security delete-keychain "$RUNNER_TEMP/testflight.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/AuthKey.p8"
 
-  # On Linux because this repo is private: a macOS minute counts ten times
-  # against the plan, and this job only waits on Apple.
+  # On Linux because this job only waits on Apple.
   wait:
     needs: upload
     runs-on: ubuntu-latest

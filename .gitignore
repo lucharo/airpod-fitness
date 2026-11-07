@@ -2,3 +2,6 @@
 xcuserdata/
 .DS_Store
 .xcodebuildmcp/
+
+# Personal motion recordings and feedback screenshots
+data/

@@ -1,25 +1,32 @@
 # AirPod Fitness
 
-Apps that use AirPods head motion as a body sensor.
+Apps that use the motion sensors in your AirPods as a body sensor. The first, Heads Up!, plays a soft tone in your AirPods when your head drops forward while you sit.
+
+<img src="docs/app-store/screenshots/1-head-dropping.png" alt="Heads Up! showing a head drop, using the app's built-in demo motion" width="280">
 
 | App | Status | Idea |
 | --- | --- | --- |
 | [Heads Up!](apps/air-posture) (folder and bundle ID keep the old Air Posture name) | In App Review, [listing](docs/app-store/listing.md) | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
 | RepSense | idea (#4) | Count reps (push-ups, squats, pull-ups) from head motion, optionally fused with Apple Watch. |
 
-Questions and answers: [docs/faq](docs/faq/README.md). Design notes: [docs/design.md](docs/design.md). Earlier conversations that led here: [docs/prior-conversations](docs/prior-conversations). Position recordings and their analysis: `data/recordings`, `tools/analyze_positions.py`.
+Questions and answers: [docs/faq](docs/faq/README.md). Design notes: [docs/design.md](docs/design.md).
 
 ## Run Heads Up!
 
-Needs a real iPhone and motion-capable AirPods (Pro, 3rd gen or later, Max, Beats Fit Pro); the simulator has no headphone motion.
+Needs a Mac with Xcode 26 and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`). The app also needs a real iPhone and motion-capable AirPods (Pro, 3rd gen or later, Max, Beats Fit Pro), because the simulator has no headphone motion. Without AirPods, the intro offers a demo with simulated head movement.
 
 ```bash
-cd apps/air-posture
+git clone https://github.com/lucharo/airpod-fitness.git
+cd airpod-fitness/apps/air-posture
 xcodegen generate
-open AirPosture.xcodeproj   # pick your iPhone, Run
+open AirPosture.xcodeproj   # pick your iPhone, set your own signing team, Run
 ```
 
-Testers normally install from TestFlight instead. Settings → Diagnostics shows the background, sound and AirPod state; the Record button runs the guided position recorder, whose exported CSV goes in `data/recordings`.
+Testers normally install from TestFlight instead. Settings → Diagnostics shows the background, sound and AirPod state; the Record button runs the guided position recorder, whose exported CSV stays out of git in `data/recordings`.
+
+## What it reads
+
+Head motion from your AirPods through Apple's `CMHeadphoneMotionManager`. It stays on your iPhone: there is no account, no analytics and no network use.
 
 ## TestFlight
 
@@ -30,3 +37,7 @@ App 6830647347 in App Store Connect, bundle `lucharo.airposture`. The build numb
 The App Store Connect API key cannot cloud-sign, so CI signs manually: `apps/air-posture/tools/AppStore.xcconfig` and `ExportOptions-manual.plist`, the "Air Posture App Store" profile fetched from the API on each run, and the Apple Distribution certificate from repository secrets. `scripts/ci-testflight-secrets.sh` loads those secrets from the login keychain and `~/.appstoreconnect`; run it again when the certificate or key is renewed. This repo is private, so each macOS minute counts ten times against the plan, which is why the wait for Apple runs on Linux.
 
 `tools/asc.py` is also a small App Store Connect API client on the same key. The key's role can read, upload and manage TestFlight, but it gets 403 on App Store listing writes, bundle IDs and profile creation. `tools/brave-js.sh` and `tools/brave-page-js.sh` drive a signed-in Brave over Apple Events for the web-only steps (Brave: View > Developer > Allow JavaScript from Apple Events).
+
+## Licence
+
+[MIT](LICENSE).
