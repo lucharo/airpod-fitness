@@ -36,6 +36,6 @@ Push to `main`: `.github/workflows/testflight.yml` archives, uploads and waits f
 
 "AirPosture: Sit Straight" by Relja Bulajic has been live since October 2025 with the same idea, and App Store Connect refuses "Heads Up" and "Heads Up!" in any capitalisation (409, name in use by another account; Warner Bros' game). AirPods can't go in the name under Apple's trademark rules, and the limit is 30 characters, so it sits in the subtitle. The home screen label is still Heads Up!. (2026-11-06)
 
-## Can I share the public TestFlight link yet?
+## Can I share the public TestFlight link?
 
-Not until Beta App Review approves a build. Until then https://testflight.apple.com/join/CkYVdbWw shows "This beta isn't accepting any new testers right now". After approval the same link works for anyone. (2026-11-06)
+Yes. Beta App Review approved build 18 on 2026-11-07, so https://testflight.apple.com/join/CkYVdbWw works for anyone. Until a first build is approved, the link shows "This beta isn't accepting any new testers right now". (2026-11-07)
