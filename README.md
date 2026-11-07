@@ -6,7 +6,7 @@ Apps that use the motion sensors in your AirPods as a body sensor. The first, He
 
 | App | Status | Idea |
 | --- | --- | --- |
-| [Heads Up!](apps/air-posture) (folder and bundle ID keep the old Air Posture name) | In App Review, [listing](docs/app-store/listing.md) | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
+| [Heads Up!](apps/air-posture) (folder and bundle ID keep the old Air Posture name) | On the [App Store](https://apps.apple.com/app/id6830647347), [listing](docs/app-store/listing.md) | Notice when your head drops forward and give graded audio feedback; remind you to move after long stillness. |
 | RepSense | idea (#4) | Count reps (push-ups, squats, pull-ups) from head motion, optionally fused with Apple Watch. |
 
 Questions and answers: [docs/faq](docs/faq/README.md). Design notes: [docs/design.md](docs/design.md).
